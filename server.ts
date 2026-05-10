@@ -3,9 +3,9 @@ import http from 'http';
 import path from 'path';
 import cors from 'cors';
 import { createServer as createViteServer } from 'vite';
-import { config, connectDB } from './config';
-import apiRoutes from './routes';
-import { SocketManager } from './socket';
+import { config, connectDB } from './server/config';
+import apiRoutes from './server/routes';
+import { SocketManager } from './server/socket';
 
 async function startServer() {
   const app = express();
@@ -13,6 +13,20 @@ async function startServer() {
 
   // Connect to DB
   await connectDB();
+
+  // Auto-setup admin for demo
+  const { User } = await import('./server/models');
+  const bcrypt = await import('bcryptjs');
+  const adminExists = await User.findOne({ role: 'admin' });
+  if (!adminExists) {
+    const hashedPassword = await bcrypt.hash('admin123', 10);
+    await User.create({
+      email: 'admin@letsgofood.fr',
+      password: hashedPassword,
+      role: 'admin'
+    });
+    console.log('✅ Default admin account created: admin@letsgofood.fr / admin123');
+  }
 
   // Socket initialization
   SocketManager.getInstance().init(server);

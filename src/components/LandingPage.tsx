@@ -8,9 +8,20 @@ export default function LandingPage() {
   const [formData, setFormData] = useState({ name: '', phone: '', type: 'pro' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [restaurants, setRestaurants] = useState<any[]>([]);
 
   useEffect(() => {
     trackEvent('visit');
+    const fetchRestaurants = async () => {
+      try {
+        const res = await fetch('/api/restaurants');
+        const data = await res.json();
+        setRestaurants(data);
+      } catch (err) {
+        console.error('Failed to fetch restaurants:', err);
+      }
+    };
+    fetchRestaurants();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,11 +59,11 @@ export default function LandingPage() {
             <span className="text-xl font-bold tracking-tight">LetsGo<span className="text-emerald-400">Food</span></span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-white/70">
-            <a href="#features" className="hover:text-emerald-400 transition-colors">Features</a>
-            <a href="#menu" className="hover:text-emerald-400 transition-colors">Menu</a>
-            <a href="#delivery" className="hover:text-emerald-400 transition-colors">Delivery</a>
+            <a href="#features" className="hover:text-emerald-400 transition-colors">Fonctionnalités</a>
+            <a href="#restaurants" className="hover:text-emerald-400 transition-colors">Restaurants</a>
+            <a href="#join" className="hover:text-emerald-400 transition-colors">Partenaires</a>
             <Link to="/admin" className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full hover:bg-emerald-500/20 transition-all">
-              Monitor
+              Administration
             </Link>
           </div>
         </div>
@@ -68,7 +79,7 @@ export default function LandingPage() {
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono uppercase tracking-widest"
           >
             <Star className="w-3 h-3 fill-current" />
-            Premium Food Delivery
+            Livraison Food Premium
           </motion.div>
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
@@ -76,7 +87,7 @@ export default function LandingPage() {
             transition={{ delay: 0.1 }}
             className="text-6xl md:text-8xl font-bold tracking-tighter max-w-4xl mx-auto leading-[0.9]"
           >
-            Savor the Moment, <span className="text-emerald-400 italic">Delivered.</span>
+            Savourez l'Instant, <span className="text-emerald-400 italic">Livré Gratuitement.</span>
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
@@ -84,7 +95,7 @@ export default function LandingPage() {
             transition={{ delay: 0.2 }}
             className="text-white/50 text-xl max-w-xl mx-auto font-light leading-relaxed"
           >
-            Experience the finest local cuisine from top-tier chefs, brought straight to your doorstep with clinical precision.
+            Découvrez l'excellence culinaire locale, livrée à votre porte avec une précision clinique. Et oui, la livraison est offerte.
           </motion.p>
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -92,13 +103,66 @@ export default function LandingPage() {
             transition={{ delay: 0.3 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8"
           >
-            <button className="px-8 py-4 bg-emerald-500 text-black font-bold rounded-xl hover:bg-emerald-400 transition-all flex items-center gap-3 group">
-              Order Now <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
+            <a href="#restaurants" className="px-8 py-4 bg-emerald-500 text-black font-bold rounded-xl hover:bg-emerald-400 transition-all flex items-center gap-3 group">
+              Commander <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </a>
             <button className="px-8 py-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all">
-              View Menu
+              Voir le Menu
             </button>
           </motion.div>
+        </div>
+      </section>
+
+      {/* Categories / Restaurants Section */}
+      <section id="restaurants" className="py-20 px-6 bg-[#08090a]">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-end justify-between mb-12">
+            <div className="space-y-4">
+              <h2 className="text-4xl font-bold tracking-tight">Explorez vos <span className="text-emerald-400">Favoris Locaux</span></h2>
+              <p className="text-white/40 max-w-md">Une sélection rigoureuse des meilleures cuisines de votre ville. Livraison 0€.</p>
+            </div>
+            <div className="flex gap-2">
+              {['Tous', 'Français', 'Japonais', 'Italien', 'Healthy'].map((cat) => (
+                <button key={cat} className="px-4 py-2 rounded-full border border-white/10 text-xs font-medium hover:bg-white/5 transition-colors">
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {restaurants.length > 0 ? (
+              restaurants.map((res) => (
+                <Link key={res._id} to={`/store/${res._id}`}>
+                  <RestaurantCard 
+                    name={res.name}
+                    category={`${res.category} • Livraison Gratuite`}
+                    rating={res.rating}
+                    time={res.deliveryTime}
+                    image={res.image}
+                  />
+                </Link>
+              ))
+            ) : (
+              // Fallback cards if no data yet
+              <>
+                <RestaurantCard 
+                  name="Le Gourmet Français"
+                  category="French • $$$"
+                  rating={4.8}
+                  time="25-35 min"
+                  image="https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=800"
+                />
+                <RestaurantCard 
+                  name="Sushi Master"
+                  category="Japanese • $$"
+                  rating={4.9}
+                  time="20-30 min"
+                  image="https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&q=80&w=800"
+                />
+              </>
+            )}
+          </div>
         </div>
       </section>
 
@@ -106,22 +170,22 @@ export default function LandingPage() {
       <section id="join" className="py-20 px-6 bg-[#0c0d0f] border-y border-white/5">
         <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <div className="space-y-6">
-            <h2 className="text-4xl font-bold tracking-tight">Partner with us.</h2>
+            <h2 className="text-4xl font-bold tracking-tight">Devenez partenaire.</h2>
             <p className="text-white/50 text-lg leading-relaxed">
-              Whether you're a high-end restaurant looking to expand your reach or a professional courier wanting to join our fleet, we've got you covered.
+              Que vous soyez un restaurant haut de gamme ou un coursier professionnel, rejoignez notre écosystème premium.
             </p>
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                <span className="text-sm font-medium">Real-time order tracking</span>
+                <span className="text-sm font-medium">Clients : Livraison gratuite illimitée</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                <span className="text-sm font-medium">Advanced logistics platform</span>
+                <span className="text-sm font-medium">Restaurateurs : Commission fixe, pas de frais cachés</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
-                <span className="text-sm font-medium">Weekly professional payments</span>
+                <span className="text-sm font-medium">Livreurs : Rémunération garantie à la course</span>
               </div>
             </div>
           </div>
@@ -159,18 +223,18 @@ export default function LandingPage() {
                   </button>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-white/40 uppercase font-mono tracking-widest">Full Name</label>
+                  <label className="text-[10px] text-white/40 uppercase font-mono tracking-widest">Nom Complet</label>
                   <input 
                     required
                     type="text" 
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm focus:border-emerald-500/50 outline-none transition-colors"
-                    placeholder="John Doe"
+                    placeholder="Jean Dupont"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-white/40 uppercase font-mono tracking-widest">Phone Number</label>
+                  <label className="text-[10px] text-white/40 uppercase font-mono tracking-widest">Numéro de Téléphone</label>
                   <input 
                     required
                     type="tel" 
@@ -184,7 +248,7 @@ export default function LandingPage() {
                   disabled={isSubmitting}
                   className="w-full py-4 bg-emerald-500 text-black font-bold rounded-xl hover:bg-emerald-400 transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Processing...' : 'Send Inquiry'}
+                  {isSubmitting ? 'Envoi...' : 'Envoyer ma demande'}
                   <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                 </button>
               </form>
@@ -198,41 +262,95 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
           <FeatureCard 
             icon={<Clock className="w-6 h-6 text-emerald-400" />}
-            title="Express Delivery"
-            description="Our advanced delivery algorithm ensures your food arrives hot, fresh, and on time."
+            title="Livraison Express"
+            description="Notre algorithme de livraison avancé garantit que vos plats arrivent chauds, frais et à l'heure."
           />
           <FeatureCard 
             icon={<ShieldCheck className="w-6 h-6 text-blue-400" />}
-            title="Quality Assured"
-            description="We only partner with top-rated restaurants that pass our strict quality audits."
+            title="Qualité Assurée"
+            description="Nous ne collaborons qu'avec les meilleurs restaurants qui passent nos tests de qualité stricts."
           />
           <FeatureCard 
             icon={<Utensils className="w-6 h-6 text-purple-400" />}
-            title="Chef Curated"
-            description="Discover exclusive seasonal menus created by world-class culinary artists."
+            title="Menus de Chefs"
+            description="Découvrez des menus exclusifs créés par des artistes culinaires de classe mondiale."
           />
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-20 px-6 border-t border-white/5 bg-[#08090a]">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-12">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
-                <Utensils className="text-black w-5 h-5" />
+      <footer className="py-24 px-6 border-t border-white/5 bg-[#08090a]">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-20">
+            <div className="space-y-6">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+                  <Utensils className="text-black w-5 h-5" />
+                </div>
+                <span className="text-xl font-bold tracking-tight">LetsGo<span className="text-emerald-400">Food</span></span>
               </div>
-              <span className="text-xl font-bold tracking-tight">LetsGo<span className="text-emerald-400">Food</span></span>
+              <p className="text-white/40 text-sm leading-relaxed">
+                L'excellence culinaire locale livrée avec une précision clinique et une passion pour la perfection.
+              </p>
+              <div className="flex gap-4">
+                <div className="p-2 bg-white/5 rounded-lg hover:bg-emerald-500/10 hover:text-emerald-400 transition-all cursor-pointer">
+                  <Instagram className="w-4 h-4" />
+                </div>
+                <div className="p-2 bg-white/5 rounded-lg hover:bg-emerald-500/10 hover:text-emerald-400 transition-all cursor-pointer">
+                  <Twitter className="w-4 h-4" />
+                </div>
+                <div className="p-2 bg-white/5 rounded-lg hover:bg-emerald-500/10 hover:text-emerald-400 transition-all cursor-pointer">
+                  <Facebook className="w-4 h-4" />
+                </div>
+              </div>
             </div>
-            <p className="text-white/40 max-w-xs">Elevating the standard of online food delivery services worldwide.</p>
+
+            <div className="space-y-6">
+              <h4 className="text-xs font-mono uppercase tracking-[0.2em] text-emerald-400">Applications</h4>
+              <ul className="space-y-4">
+                <li><Link to="/" className="text-white/50 hover:text-white transition-colors flex items-center gap-2"><ArrowRight className="w-3 h-3 text-white/20" /> Page d'accueil</Link></li>
+                <li><Link to="/#restaurants" className="text-white/50 hover:text-white transition-colors flex items-center gap-2"><ArrowRight className="w-3 h-3 text-white/20" /> Application client</Link></li>
+                <li><Link to="/merchant" className="text-white/50 hover:text-white transition-colors flex items-center gap-2"><ArrowRight className="w-3 h-3 text-white/20" /> Merchant Interface</Link></li>
+                <li><Link to="/driver" className="text-white/50 hover:text-white transition-colors flex items-center gap-2"><ArrowRight className="w-3 h-3 text-white/20" /> Driver App</Link></li>
+                <li><Link to="/saas" className="text-white/50 hover:text-white transition-colors flex items-center gap-2"><ArrowRight className="w-3 h-3 text-white/20" /> SaaS Dashboard</Link></li>
+                <li><Link to="/crm" className="text-white/50 hover:text-white transition-colors flex items-center gap-2"><ArrowRight className="w-3 h-3 text-white/20" /> CRM & Support</Link></li>
+                <li><Link to="/admin" className="text-white/50 hover:text-white transition-colors flex items-center gap-2"><ArrowRight className="w-3 h-3 text-white/20" /> Supervision Admin</Link></li>
+              </ul>
+            </div>
+
+            <div className="space-y-6">
+              <h4 className="text-xs font-mono uppercase tracking-[0.2em] text-blue-400">Soutien</h4>
+              <ul className="space-y-4">
+                <li className="text-white/50 flex items-center gap-2 transition-colors hover:text-white cursor-pointer"><Send className="w-3 h-3 text-white/20" /> letsgofood@pro.fr</li>
+                <li className="text-white/50 flex items-center gap-2 transition-colors hover:text-white cursor-pointer group"><Clock className="w-3 h-3 text-white/20" /> 07 46 33 61 97</li>
+                <li><a href="#" className="text-white/50 hover:text-white transition-colors flex items-center gap-2"><ArrowRight className="w-3 h-3 text-white/20" /> Ouvrir un ticket SAV</a></li>
+              </ul>
+            </div>
+
+            <div className="space-y-6">
+              <h4 className="text-xs font-mono uppercase tracking-[0.2em] text-purple-400">Localisation</h4>
+              <p className="text-white/50 text-sm leading-relaxed">
+                Opérant actuellement à Lyon et ses environs. Expansion prévue pour 2025.
+              </p>
+              <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
+                <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">Status Système</p>
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs font-medium text-emerald-400 font-mono">OPÉRATIONNEL</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="flex gap-8">
-            <Instagram className="w-6 h-6 text-white/40 hover:text-emerald-400 cursor-pointer transition-colors" />
-            <Twitter className="w-6 h-6 text-white/40 hover:text-emerald-400 cursor-pointer transition-colors" />
-            <Facebook className="w-6 h-6 text-white/40 hover:text-emerald-400 cursor-pointer transition-colors" />
-          </div>
-          <div className="text-sm text-white/30 font-mono">
-            © 2024 LETSGOFOOD CORP. ALL RIGHTS RESERVED.
+          
+          <div className="flex flex-col md:flex-row justify-between items-center gap-6 pt-12 border-t border-white/5">
+            <div className="text-[10px] text-white/20 font-mono uppercase tracking-[0.3em]">
+              © 2024 LETSGOFOOD CORP. TOUS DROITS RÉSERVÉS.
+            </div>
+            <div className="flex gap-8 text-[10px] text-white/20 font-mono uppercase tracking-[0.1em]">
+              <a href="#" className="hover:text-white transition-colors">Mentions Légales</a>
+              <a href="#" className="hover:text-white transition-colors">Confidentialité</a>
+              <a href="#" className="hover:text-white transition-colors">Cookies</a>
+            </div>
           </div>
         </div>
       </footer>
@@ -249,5 +367,28 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode, titl
       <h3 className="text-xl font-bold mb-4">{title}</h3>
       <p className="text-white/40 leading-relaxed font-light">{description}</p>
     </div>
+  );
+}
+
+function RestaurantCard({ name, category, rating, time, image }: { name: string, category: string, rating: number, time: string, image: string }) {
+  return (
+    <motion.div 
+      whileHover={{ y: -5 }}
+      className="group cursor-pointer"
+    >
+      <div className="relative aspect-[16/10] overflow-hidden rounded-2xl mb-4">
+        <img src={image} alt={name} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" />
+        <div className="absolute top-4 left-4 px-2 py-1 bg-black/60 backdrop-blur-md rounded-md text-[10px] font-bold text-emerald-400 border border-white/10 uppercase tracking-widest">
+          {time}
+        </div>
+        <div className="absolute top-4 right-4 flex items-center gap-1 px-2 py-1 bg-white/90 rounded-md text-[10px] font-bold text-black shadow-lg">
+          <Star className="w-3 h-3 fill-amber-500 text-amber-500" /> {rating}
+        </div>
+      </div>
+      <div className="space-y-1">
+        <h3 className="text-lg font-bold group-hover:text-emerald-400 transition-colors">{name}</h3>
+        <p className="text-sm text-white/40 font-medium">{category}</p>
+      </div>
+    </motion.div>
   );
 }

@@ -37,4 +37,8 @@ export class SocketManager {
       }
     });
   }
+
+  public broadcastStatusUpdate(orderId: string, status: string) {
+    this.broadcast('order_update', { orderId, status });
+  }
 }
