@@ -10,7 +10,8 @@ import {
   CheckCircle2,
   Zap,
   Globe,
-  Bell
+  Bell,
+  Cpu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -32,8 +33,24 @@ export default function SaaSDashboard() {
     activeDrivers: 8,
     systemUptime: '99.9%'
   });
+  const [infra, setInfra] = useState<any>(null);
 
   useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/admin/metrics', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        setStats(data.metrics);
+        setInfra(data.infra);
+      } catch (err) {
+        console.error('Stats sync error:', err);
+      }
+    };
+
+    fetchStats();
+    const interval = setInterval(fetchStats, 10000); // Polling for infra metrics
     // Note: SaaS Control Tower consumes event streams only
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const ws = new WebSocket(`${protocol}//${window.location.host}`);
@@ -47,10 +64,10 @@ export default function SaaSDashboard() {
           setEvents(prev => [{
             id: Math.random().toString(36).substr(2, 9),
             type: data.type,
-            message: `Order ${data.data._id?.substring(0, 8)} status: ${data.data.status}`,
+            message: `[CID: ${data.correlationId?.slice(-6)}] Order ${data.data._id?.substring(0, 8)} status: ${data.data.status}`,
             timestamp: new Date(),
             severity: (data.data.status === 'cancelled' || data.data.status === 'delayed') ? 'high' : 'low'
-          }, ...prev].slice(0, 15));
+          }, ...prev].slice(0, 20));
 
           // Update real-time counts based on events
           if (data.type === 'ORDER_CREATED') setStats(s => ({ ...s, activeOrders: s.activeOrders + 1 }));
@@ -101,11 +118,33 @@ export default function SaaSDashboard() {
       <div className="flex-1 grid grid-cols-12 gap-6 overflow-hidden">
         
         {/* Left Stats */}
-        <div className="col-span-3 space-y-6">
-          <KpiCard label="ACTIVE ORDERS" value={stats.activeOrders} icon={Package} color="text-blue-400" />
-          <KpiCard label="DELAYED" value={stats.delayedOrders} icon={AlertCircle} color="text-red-400" />
-          <KpiCard label="DRIVERS LIVE" value={stats.activeDrivers} icon={Bike} color="text-emerald-400" />
-          <KpiCard label="UPTIME" value={stats.systemUptime} icon={Activity} color="text-purple-400" />
+        <div className="col-span-3 flex flex-col gap-6 overflow-y-auto no-scrollbar">
+          <div className="space-y-6">
+            <KpiCard label="ACTIVE ORDERS" value={stats.activeOrders} icon={Package} color="text-blue-400" />
+            <KpiCard label="DELAYED" value={stats.delayedOrders} icon={AlertCircle} color="text-red-400" />
+          </div>
+          
+          <div className="bg-[#111214] border border-white/5 rounded-3xl p-6">
+            <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+              <Globe className="w-3 h-3 text-emerald-500" /> Region Health
+            </h2>
+            <div className="space-y-4">
+              {infra?.regions?.map((r: any) => (
+                <div key={r.id} className="flex items-center justify-between">
+                  <span className="text-[10px] font-medium text-gray-300">{r.name}</span>
+                  <div className={`w-1.5 h-1.5 rounded-full ${r.status === 'HEALTHY' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`}></div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-[#111214] border border-white/5 rounded-3xl p-6">
+            <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+              <Cpu className="w-3 h-3 text-purple-500" /> K8s Fleet
+            </h2>
+            <div className="text-2xl font-black mb-1">{infra?.cluster?.length || 0}</div>
+            <div className="text-[9px] text-gray-500 uppercase font-mono">Autonomous Pods</div>
+          </div>
         </div>
 
         {/* Center Map Placeholder */}

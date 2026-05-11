@@ -14,13 +14,18 @@ export const config = {
   ENV: process.env.NODE_ENV || 'development',
 };
 
+let isConnected = false;
+
 export const connectDB = async () => {
+  if (isConnected) return;
+  
   try {
     await mongoose.connect(config.MONGO_URL);
+    isConnected = true;
     console.log('✅ MongoDB Connected');
   } catch (err) {
     console.error('❌ MongoDB Connection Error:', err);
-    // In production, we might want to exit
     if (config.ENV === 'production') process.exit(1);
   }
 };
+

@@ -1,50 +1,52 @@
 import express from 'express';
 import http from 'http';
 import path from 'path';
-import cors from 'cors';
 import { createServer as createViteServer } from 'vite';
-import { config, connectDB } from './server/config';
-import apiRoutes from './server/routes';
+import { config } from './server/config';
+import { createApp } from './server/app';
 import { SocketManager } from './server/socket';
 
 async function startServer() {
-  const app = express();
+  const app = await createApp();
   const server = http.createServer(app);
 
-  // Connect to DB
-  await connectDB();
-
-  // Auto-setup admin for demo
-  const { User } = await import('./server/models');
+  // Auto-setup admin & seed for demo
+  const { User, Restaurant, Dish } = await import('./server/models');
   const bcrypt = await import('bcryptjs');
-  const adminExists = await User.findOne({ role: 'admin' });
-  if (!adminExists) {
-    const hashedPassword = await bcrypt.hash('admin123', 10);
-    await User.create({
-      email: 'admin@letsgofood.fr',
-      password: hashedPassword,
-      role: 'admin'
-    });
-    console.log('✅ Default admin account created: admin@letsgofood.fr / admin123');
+  
+  try {
+    const adminExists = await User.findOne({ role: 'admin' });
+    if (!adminExists) {
+      const hashedPassword = await bcrypt.hash('admin123', 10);
+      await User.create({
+        email: 'admin@letsgofood.fr',
+        password: hashedPassword,
+        role: 'admin'
+      });
+      console.log('✅ Default admin account created: admin@letsgofood.fr / admin123');
+    }
+
+    const restaurantCount = await Restaurant.countDocuments();
+    if (restaurantCount === 0) {
+      console.log('🌱 Seeding initial restaurant data...');
+      const r1 = await Restaurant.create({
+        name: "Le Gourmet Français",
+        description: "Authentic French experience.",
+        image: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=800",
+        category: "French",
+        rating: 4.8,
+        deliveryTime: "25-30 min",
+        deliveryFee: 2.50
+      });
+      await Dish.create({ restaurantId: r1._id, name: "Boeuf Bourguignon", price: 22.0, category: "Mains" });
+      console.log('✅ Seeding complete');
+    }
+  } catch (err) {
+    console.error('Seed/Setup warning:', err);
   }
 
   // Socket initialization
   SocketManager.getInstance().init(server);
-
-  // Middleware
-  app.use(cors());
-  
-  // Note: Webhook needs raw body, we handle it inside the route or before general json parser
-  app.use((req, res, next) => {
-    if (req.originalUrl === '/api/webhook/stripe') {
-      next();
-    } else {
-      express.json()(req, res, next);
-    }
-  });
-
-  // API Routes
-  app.use('/api', apiRoutes);
 
   // Vite integration for development
   if (config.ENV !== 'production') {

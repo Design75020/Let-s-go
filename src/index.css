@@ -9,7 +9,7 @@
 
 @layer base {
   body {
-    @apply bg-[#08090a] text-[#e0e0e0] font-sans overflow-hidden antialiased;
+    @apply bg-[#08090a] text-[#e0e0e0] font-sans antialiased;
   }
 }
 
