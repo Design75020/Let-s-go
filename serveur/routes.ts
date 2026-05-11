@@ -216,6 +216,35 @@ router.post('/auth/setup', async (req, res) => {
   }
 });
 
+router.get('/admin/stats', authenticate, authorize(['admin', 'crm']), async (req, res) => {
+  try {
+    const [totalOrders, totalLeads, agents] = await Promise.all([
+      Order.countDocuments(),
+      Lead.countDocuments(),
+      Order.aggregate([{ $group: { _id: '$agentId', orders: { $sum: 1 } } }])
+    ]);
+    
+    // Recent activity
+    const recentOrders = await Order.find().sort({ createdAt: -1 }).limit(5);
+    
+    res.json({
+      kpis: {
+        totalOrders,
+        totalLeads,
+        conversion: totalLeads > 0 ? Math.round((totalOrders / totalLeads) * 100) : 0
+      },
+      recent: {
+        orders: recentOrders
+      },
+      analytics: {
+        agents
+      }
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- Core Business Discovery (Cached) ---
 router.get('/restaurants', async (req, res) => {
   try {

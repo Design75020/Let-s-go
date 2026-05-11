@@ -27,8 +27,16 @@ export const navigateToDomain = (domain: DomainType, navigate?: any) => {
 
   // Preview / AI Studio / Vercel logic
   if (navigate) {
-    // If we have navigate (hook), use it to stay within SPA
-    navigate(`/?view=${domain}`);
+    // Force a fresh check by checking path
+    const currentPath = window.location.pathname;
+    const currentView = new URLSearchParams(window.location.search).get('view');
+    
+    if (currentPath !== '/' || currentView !== domain) {
+      navigate({
+        pathname: '/',
+        search: `?view=${domain}`
+      }, { replace: true });
+    }
   } else {
     // Fallback for non-react usage
     const url = new URL(window.location.href);

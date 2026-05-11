@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import LandingPage from './components/LandingPage';
 import ClientApp from './components/ClientApp';
 import Store from './components/Store';
@@ -23,79 +23,60 @@ import { Loader2 } from 'lucide-react';
  */
 const DomainDispatcher = () => {
   const hostname = window.location.hostname.toLowerCase();
+  const [searchParams] = useSearchParams();
+  const view = searchParams.get('view');
   
   // Diagnostic log
-  console.log(`[LetsGoFood] Dispatching host: ${hostname}`);
+  console.log(`[LetsGoFood] Dispatching host: ${hostname}, view: ${view}`);
 
   useEffect(() => {
     const updateMetadata = () => {
-      switch (hostname) {
-        case 'app.letsgofood.fr':
-        case 'commande.letsgofood.fr':
-          document.title = "LetsGoFood App :: Commande en ligne";
-          break;
-        case 'letsgofood.fr':
-        case 'www.letsgofood.fr':
-          document.title = "LetsGoFood :: Plateforme de livraison Halal";
-          break;
-        case 'merchant.letsgofood.fr':
-        case 'marchand.letsgofood.fr':
-          document.title = "LetsGoFood :: Portail Commerçant";
-          break;
-        case 'driver.letsgofood.fr':
-        case 'chauffeur.letsgofood.fr':
-          document.title = "LetsGoFood :: Portail Chauffeur";
-          break;
-        default:
-          document.title = "LetsGoFood Ecosystem";
-      }
+      let title = "LetsGoFood Ecosystem";
+      if (hostname.includes('app') || view === 'app') title = "LetsGoFood App :: Commande en ligne";
+      else if (hostname.includes('www') || view === 'landing' || !view) title = "LetsGoFood :: Plateforme de livraison Halal";
+      else if (hostname.includes('merchant') || view === 'merchant') title = "LetsGoFood :: Portail Commerçant";
+      else if (hostname.includes('driver') || view === 'driver') title = "LetsGoFood :: Portail Chauffeur";
+      
+      document.title = title;
     };
     updateMetadata();
-  }, [hostname]);
+  }, [hostname, view]);
 
-  switch (hostname) {
-    case 'app.letsgofood.fr':
-    case 'commande.letsgofood.fr':
-      return <ClientApp />;
+  // Priority 1: Production Multi-Domain Routing
+  if (hostname === 'app.letsgofood.fr' || hostname === 'commande.letsgofood.fr') return <ClientApp />;
+  if (hostname === 'letsgofood.fr' || hostname === 'www.letsgofood.fr') return <LandingPage />;
+  if (hostname === 'marchand.letsgofood.fr' || hostname === 'merchant.letsgofood.fr') return <Navigate to="/merchant" replace />;
+  if (hostname === 'chauffeur.letsgofood.fr' || hostname === 'driver.letsgofood.fr') return <Navigate to="/driver" replace />;
+  if (hostname === 'admin.letsgofood.fr') return <Navigate to="/admin" replace />;
+  if (hostname === 'saas.letsgofood.fr') return <Navigate to="/saas" replace />;
 
-    case 'letsgofood.fr':
-    case 'www.letsgofood.fr':
-      return <LandingPage />;
+  // Priority 2: Preview Mode Query Parameter Routing
+  if (view === 'landing') return <LandingPage />;
+  if (view === 'app') return <ClientApp />;
+  if (view === 'merchant') return <Navigate to="/merchant" replace />;
+  if (view === 'driver') return <Navigate to="/driver" replace />;
+  if (view === 'admin') return <Navigate to="/admin" replace />;
+  if (view === 'crm') return <Navigate to="/crm" replace />;
+  if (view === 'saas') return <SaaSDashboard />;
 
-    case 'marchand.letsgofood.fr':
-    case 'merchant.letsgofood.fr':
-      return <Navigate to="/merchant" replace />;
+  // Fallback: Default to Landing Page
+  return <LandingPage />;
+};
 
-    case 'chauffeur.letsgofood.fr':
-    case 'driver.letsgofood.fr':
-      return <Navigate to="/driver" replace />;
-
-    case 'admin.letsgofood.fr':
-      return <Navigate to="/admin" replace />;
-
-    case 'crm.letsgofood.fr':
-    case 'crm-letsgofood.vercel.app': // Variant handling
-      return <Navigate to="/crm" replace />;
-
-    case 'saas.letsgofood.fr':
-      return <Navigate to="/saas" replace />;
-
-    default:
-      // Preview/Dev/Custom domain logic
-      const params = new URLSearchParams(window.location.search);
-      const view = params.get('view');
-      
-      if (view === 'landing') return <LandingPage />;
-      if (view === 'app') return <ClientApp />;
-      if (view === 'merchant') return <Navigate to="/merchant" replace />;
-      if (view === 'driver') return <Navigate to="/driver" replace />;
-      if (view === 'admin') return <Navigate to="/admin" replace />;
-      if (view === 'crm') return <Navigate to="/crm" replace />;
-      if (view === 'saas') return <SaaSDashboard />;
-      
-      // Default fallback in AI Studio preview: Show the Landing Page first to test the ecosystem
-      return <LandingPage />;
-  }
+/**
+ * Stabilized Dispatcher Wrapper
+ * Prevents "removeChild" errors by giving React a clear identity for the root component
+ */
+const StabilizedDispatcher = () => {
+  const [searchParams] = useSearchParams();
+  const view = searchParams.get('view') || 'default';
+  const hostname = window.location.hostname.toLowerCase();
+  
+  return (
+    <div key={`lgf-root-${hostname}-${view}`} className="min-h-screen bg-[#08090a]">
+      <DomainDispatcher />
+    </div>
+  );
 };
 
 export default function App() {
@@ -103,7 +84,7 @@ export default function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          <Route path="/" element={<DomainDispatcher />} />
+          <Route path="/" element={<StabilizedDispatcher />} />
           <Route path="/login" element={<Login />} />
           
           {/* Ecosystem Modules */}
