@@ -8,7 +8,8 @@ export async function createApp() {
   const app = express();
 
   // Connect to DB (cached by Mongoose if already connected)
-  await connectDB();
+  // We do NOT await here to prevent blocking the entire server startup (especially in preview without DB)
+  connectDB().catch(err => console.error('Initial DB connection attempt failed:', err));
 
   // Middleware
   app.use(cors());

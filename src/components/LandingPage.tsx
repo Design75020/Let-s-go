@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Utensils, Clock, ShieldCheck, ArrowRight, Star, Instagram, Twitter, Facebook, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { trackEvent, getTrackingParams } from '../lib/tracking';
 import { navigateToDomain } from '../lib/domains';
 
 export default function LandingPage() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({ name: '', phone: '', type: 'pro' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -64,7 +66,7 @@ export default function LandingPage() {
             <a href="#restaurants" className="hover:text-emerald-400 transition-colors">Restaurants</a>
             <a href="#join" className="hover:text-emerald-400 transition-colors">Partenaires</a>
             <button 
-              onClick={() => navigateToDomain('admin')} 
+              onClick={() => navigateToDomain('admin', navigate)} 
               className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full hover:bg-emerald-500/20 transition-all font-bold"
             >
               Administration
@@ -108,7 +110,7 @@ export default function LandingPage() {
             className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8"
           >
             <button 
-              onClick={() => navigateToDomain('app')}
+              onClick={() => navigateToDomain('app', navigate)}
               className="px-8 py-4 bg-emerald-500 text-black font-bold rounded-xl hover:bg-emerald-400 transition-all flex items-center gap-3 group"
             >
               Accéder à l'App <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -315,13 +317,13 @@ export default function LandingPage() {
             <div className="space-y-6">
               <h4 className="text-xs font-mono uppercase tracking-[0.2em] text-emerald-400">Applications Core</h4>
               <ul className="space-y-4">
-                <li><button onClick={() => navigateToDomain('landing')} className="text-white/50 hover:text-white transition-colors flex items-center gap-2 text-left w-full"><ArrowRight className="w-3 h-3 text-white/20" /> Acquisition (Marketing)</button></li>
-                <li><button onClick={() => navigateToDomain('app')} className="text-white/50 hover:text-white transition-colors flex items-center gap-2 text-left w-full"><ArrowRight className="w-3 h-3 text-white/20" /> Plateforme Client (Live)</button></li>
-                <li><button onClick={() => navigateToDomain('merchant')} className="text-white/50 hover:text-white transition-colors flex items-center gap-2 text-left w-full"><ArrowRight className="w-3 h-3 text-white/20" /> Merchant Interface</button></li>
-                <li><button onClick={() => navigateToDomain('driver')} className="text-white/50 hover:text-white transition-colors flex items-center gap-2 text-left w-full"><ArrowRight className="w-3 h-3 text-white/20" /> Driver Dispatch</button></li>
-                <li><button onClick={() => navigateToDomain('saas')} className="text-white/50 hover:text-white transition-colors flex items-center gap-2 text-left w-full"><ArrowRight className="w-3 h-3 text-white/20" /> SaaS Control Tower</button></li>
-                <li><button onClick={() => navigateToDomain('crm')} className="text-white/50 hover:text-white transition-colors flex items-center gap-2 text-left w-full"><ArrowRight className="w-3 h-3 text-white/20" /> CRM & Sales</button></li>
-                <li><button onClick={() => navigateToDomain('admin')} className="text-white/50 hover:text-white transition-colors flex items-center gap-2 text-left w-full"><ArrowRight className="w-3 h-3 text-white/20" /> Supervision Kernel</button></li>
+                <li><button onClick={() => navigateToDomain('landing', navigate)} className="text-white/50 hover:text-white transition-colors flex items-center gap-2 text-left w-full"><ArrowRight className="w-3 h-3 text-white/20" /> Acquisition (Marketing)</button></li>
+                <li><button onClick={() => navigateToDomain('app', navigate)} className="text-white/50 hover:text-white transition-colors flex items-center gap-2 text-left w-full"><ArrowRight className="w-3 h-3 text-white/20" /> Plateforme Client (Live)</button></li>
+                <li><button onClick={() => navigateToDomain('merchant', navigate)} className="text-white/50 hover:text-white transition-colors flex items-center gap-2 text-left w-full"><ArrowRight className="w-3 h-3 text-white/20" /> Merchant Interface</button></li>
+                <li><button onClick={() => navigateToDomain('driver', navigate)} className="text-white/50 hover:text-white transition-colors flex items-center gap-2 text-left w-full"><ArrowRight className="w-3 h-3 text-white/20" /> Driver Dispatch</button></li>
+                <li><button onClick={() => navigateToDomain('saas', navigate)} className="text-white/50 hover:text-white transition-colors flex items-center gap-2 text-left w-full"><ArrowRight className="w-3 h-3 text-white/20" /> SaaS Control Tower</button></li>
+                <li><button onClick={() => navigateToDomain('crm', navigate)} className="text-white/50 hover:text-white transition-colors flex items-center gap-2 text-left w-full"><ArrowRight className="w-3 h-3 text-white/20" /> CRM & Sales</button></li>
+                <li><button onClick={() => navigateToDomain('admin', navigate)} className="text-white/50 hover:text-white transition-colors flex items-center gap-2 text-left w-full"><ArrowRight className="w-3 h-3 text-white/20" /> Supervision Kernel</button></li>
               </ul>
             </div>
 

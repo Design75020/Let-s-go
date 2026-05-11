@@ -222,6 +222,35 @@ router.get('/restaurants', async (req, res) => {
     const cached = Cache.get('list_restaurants');
     if (cached) return res.json(cached);
 
+    if (mongoose.connection.readyState !== 1) {
+      if (config.ENV !== 'production') {
+        console.warn('⚠️ DB not connected, returning mock data for development');
+        return res.json([
+          {
+            _id: 'mock-1',
+            name: "Le Gourmet Français (DÉMO)",
+            description: "Authentic French experience.",
+            image: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=800",
+            category: "French",
+            rating: 4.8,
+            deliveryTime: "25-30 min",
+            deliveryFee: 2.50
+          },
+          {
+            _id: 'mock-2',
+            name: "Sushi Master (DÉMO)",
+            description: "Fresh and premium sushi.",
+            image: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&q=80&w=800",
+            category: "Japanese",
+            rating: 4.9,
+            deliveryTime: "20-35 min",
+            deliveryFee: 1.00
+          }
+        ]);
+      }
+      throw new Error('Database disconnected');
+    }
+
     const restaurants = await Restaurant.find();
     Cache.set('list_restaurants', restaurants, 30000);
     res.json(restaurants);
@@ -235,6 +264,16 @@ router.get('/restaurants/:id/dishes', async (req, res) => {
     const cacheKey = `dishes_${req.params.id}`;
     const cached = Cache.get(cacheKey);
     if (cached) return res.json(cached);
+
+    if (mongoose.connection.readyState !== 1) {
+      if (config.ENV !== 'production') {
+        return res.json([
+          { _id: 'd1', name: "Plat du jour (DÉMO)", description: "Une délicieuse surprise du chef.", price: 15.50, category: "Mains", available: true },
+          { _id: 'd2', name: "Entrée Maison (DÉMO)", description: "Frais et léger.", price: 8.00, category: "Starters", available: true }
+        ]);
+      }
+      throw new Error('Database disconnected');
+    }
 
     const dishes = await Dish.find({ restaurantId: req.params.id });
     Cache.set(cacheKey, dishes, 60000);

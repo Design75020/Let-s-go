@@ -17,15 +17,23 @@ export default function ClientApp() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchRestaurants = async () => {
       try {
-        const res = await fetch('/api/restaurants');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+        const res = await fetch('/api/restaurants', { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         setRestaurants(data);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Core App Data Sync Failure:', err);
+        setError(err.message || 'Unknown Error');
       } finally {
         setLoading(false);
       }
@@ -39,11 +47,36 @@ export default function ClientApp() {
   );
 
   if (loading) return (
-    <div className="h-screen bg-[#08090a] flex flex-col items-center justify-center gap-4">
-      <div className="w-12 h-12 border-2 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
-      <span className="text-xs font-mono text-emerald-500 uppercase tracking-widest">Initialising Secure App Link...</span>
+    <div className="h-screen bg-[#111] flex flex-col items-center justify-center gap-6 px-6 text-center">
+      <div className="space-y-4">
+        <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mx-auto"></div>
+        <p className="text-emerald-500 font-mono text-xs uppercase tracking-widest animate-pulse">Initializing Neural Marketplace...</p>
+      </div>
     </div>
   );
+
+  if (error || restaurants.length === 0) {
+    return (
+      <div className="h-screen bg-black flex flex-col items-center justify-center p-6 text-center space-y-6">
+        <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center border border-red-500/20">
+          <Utensils className="w-10 h-10 text-red-500 opacity-50" />
+        </div>
+        <div className="max-w-xs space-y-2">
+          <h3 className="text-xl font-bold text-white">System Sync Interrupted</h3>
+          <p className="text-white/40 text-sm">
+            {error ? `Error: ${error}` : "No restaurant data received from kernel."}
+          </p>
+          <p className="text-[10px] text-white/20 font-mono">Ensure MongoDB is reachable or seed data is present.</p>
+        </div>
+        <button 
+          onClick={() => window.location.reload()}
+          className="px-6 py-3 bg-white/10 text-white font-bold rounded-xl hover:bg-white/20 transition-all text-sm border border-white/10"
+        >
+          Re-synchronize
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#08090a] text-white">

@@ -3,13 +3,14 @@
  * Handles switching between Acquisition, Product, Merchant, and Ops layers.
  */
 
+import { useSearchParams } from 'react-router-dom';
+
 export type DomainType = 'landing' | 'app' | 'merchant' | 'driver' | 'admin' | 'crm' | 'saas';
 
-export const navigateToDomain = (domain: DomainType) => {
+export const navigateToDomain = (domain: DomainType, navigate?: any) => {
   const hostname = window.location.hostname.toLowerCase();
   const isProduction = hostname.endsWith('letsgofood.fr');
-  const isPreview = hostname.includes('.run.app') || hostname.includes('localhost') || hostname.includes('vercel.app');
-
+  
   if (isProduction) {
     const subdomainMap: Record<DomainType, string> = {
       landing: 'www',
@@ -24,14 +25,14 @@ export const navigateToDomain = (domain: DomainType) => {
     return;
   }
 
-  if (isPreview) {
-    // In preview mode, we use query parameters to switch views within the same deployment
+  // Preview / AI Studio / Vercel logic
+  if (navigate) {
+    // If we have navigate (hook), use it to stay within SPA
+    navigate(`/?view=${domain}`);
+  } else {
+    // Fallback for non-react usage
     const url = new URL(window.location.href);
     url.searchParams.set('view', domain);
     window.location.href = url.toString();
-    return;
   }
-
-  // Fallback
-  console.warn(`[LetsGoFood] Unrecognized environment for navigation to ${domain}`);
 };

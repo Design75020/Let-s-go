@@ -20,7 +20,12 @@ export const connectDB = async () => {
   if (isConnected) return;
   
   try {
-    await mongoose.connect(config.MONGO_URL);
+    // Disable command buffering globally so queries fail fast if DB is down
+    mongoose.set('bufferCommands', false);
+    
+    await mongoose.connect(config.MONGO_URL, {
+      serverSelectionTimeoutMS: 5000, // 5 seconds timeout
+    });
     isConnected = true;
     console.log('✅ MongoDB Connected');
   } catch (err) {

@@ -26,7 +26,8 @@ export const rateLimiter = (req: any, res: any, next: any) => {
   };
 
   const now = Date.now();
-  const currentLimit = limitConfig[role] || 30;
+  const isProd = process.env.NODE_ENV === 'production';
+  const currentLimit = isProd ? (limitConfig[role] || 30) : 5000;
   const windowMs = 60000; // 1 minute
 
   let record = rateStore.get(key);
