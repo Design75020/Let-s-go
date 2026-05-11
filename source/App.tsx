@@ -6,6 +6,7 @@
 import React, { useMemo, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import LandingPage from './components/LandingPage';
+import DevLaunchpad from './components/DevLaunchpad';
 import ClientApp from './components/ClientApp';
 import Store from './components/Store';
 import OrderTracking from './components/OrderTracking';
@@ -29,9 +30,15 @@ const DomainDispatcher = ({ view: propView }: { view?: string | null }) => {
   const [searchParams] = useSearchParams();
   const view = propView || searchParams.get('view');
 
+  const isDev = hostname.includes('.run.app') || hostname.includes('localhost') || hostname.includes('github.dev');
+
   // Preview Mode / Development Routing (via ?view= parameter)
   // This logic is prioritized for AI Studio environments
-  if (hostname.includes('.run.app') || hostname.includes('localhost') || hostname.includes('github.dev')) {
+  if (isDev) {
+    if (!view || view === 'default') {
+      return <DevLaunchpad />;
+    }
+
     switch (view) {
       case 'landing': return <LandingPage />;
       case 'app': return <ClientAppRoutes />;
@@ -40,7 +47,7 @@ const DomainDispatcher = ({ view: propView }: { view?: string | null }) => {
       case 'saas': return <SaaSRoutes />;
       case 'crm': return <CRMRoutes />;
       case 'admin': return <AdminRoutes />;
-      default: return <LandingPage />; // Default preview
+      default: return <DevLaunchpad />;
     }
   }
 
