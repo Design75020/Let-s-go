@@ -36,9 +36,11 @@ async function startServer() {
         category: "French",
         rating: 4.8,
         deliveryTime: "25-30 min",
-        deliveryFee: 2.50
+        deliveryFee: 0
       });
-      await Dish.create({ restaurantId: r1._id, name: "Boeuf Bourguignon", price: 22.0, category: "Mains" });
+      if (r1) {
+        await Dish.create({ restaurantId: r1._id, name: "Boeuf Bourguignon", price: 22.0, category: "Mains" });
+      }
       console.log('✅ Seeding complete');
     }
   } catch (err) {

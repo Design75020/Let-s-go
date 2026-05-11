@@ -11,61 +11,141 @@ import Store from './components/Store';
 import OrderTracking from './components/OrderTracking';
 import Login from './components/Login';
 import SaaSDashboard from './components/SaaSDashboard';
-import ProtectedRoute from './components/ProtectedRoute';
-import { AuthProvider } from './context/AuthContext';
+import MerchantDashboard from './components/MerchantDashboard';
+import DriverDashboard from './components/DriverDashboard';
 import AdminPanel from './components/AdminPanel';
 import CRMPanel from './components/CRMPanel';
+import ProtectedRoute from './components/ProtectedRoute';
+import { AuthProvider } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { Loader2 } from 'lucide-react';
 
 /**
- * Domain-based Dispatcher (SaaS Industrial Mode)
- * Enforces strict isolation between Acquisition, Product, and Ops layers.
+ * Domain-based Dispatcher (Enterprise Multi-App Architecture)
+ * Enforces strict isolation between different business verticals.
  */
-const DomainDispatcher = () => {
+const DomainDispatcher = ({ view: propView }: { view?: string | null }) => {
   const hostname = window.location.hostname.toLowerCase();
   const [searchParams] = useSearchParams();
-  const view = searchParams.get('view');
-  
-  // Diagnostic log
-  console.log(`[LetsGoFood] Dispatching host: ${hostname}, view: ${view}`);
+  const view = propView || searchParams.get('view');
 
-  useEffect(() => {
-    const updateMetadata = () => {
-      let title = "LetsGoFood Ecosystem";
-      if (hostname.includes('app') || view === 'app') title = "LetsGoFood App :: Commande en ligne";
-      else if (hostname.includes('www') || view === 'landing' || !view) title = "LetsGoFood :: Plateforme de livraison Halal";
-      else if (hostname.includes('merchant') || view === 'merchant') title = "LetsGoFood :: Portail Commerçant";
-      else if (hostname.includes('driver') || view === 'driver') title = "LetsGoFood :: Portail Chauffeur";
-      
-      document.title = title;
-    };
-    updateMetadata();
-  }, [hostname, view]);
+  // Preview Mode / Development Routing (via ?view= parameter)
+  // This logic is prioritized for AI Studio environments
+  if (hostname.includes('.run.app') || hostname.includes('localhost') || hostname.includes('github.dev')) {
+    switch (view) {
+      case 'landing': return <LandingPage />;
+      case 'app': return <ClientAppRoutes />;
+      case 'merchant': return <MerchantRoutes />;
+      case 'driver': return <DriverRoutes />;
+      case 'saas': return <SaaSRoutes />;
+      case 'crm': return <CRMRoutes />;
+      case 'admin': return <AdminRoutes />;
+      default: return <LandingPage />; // Default preview
+    }
+  }
 
-  // Priority 1: Production Multi-Domain Routing
-  if (hostname === 'app.letsgofood.fr' || hostname === 'commande.letsgofood.fr') return <ClientApp />;
-  if (hostname === 'letsgofood.fr' || hostname === 'www.letsgofood.fr') return <LandingPage />;
-  if (hostname === 'marchand.letsgofood.fr' || hostname === 'merchant.letsgofood.fr') return <Navigate to="/merchant" replace />;
-  if (hostname === 'chauffeur.letsgofood.fr' || hostname === 'driver.letsgofood.fr') return <Navigate to="/driver" replace />;
-  if (hostname === 'admin.letsgofood.fr') return <Navigate to="/admin" replace />;
-  if (hostname === 'saas.letsgofood.fr') return <Navigate to="/saas" replace />;
-
-  // Priority 2: Preview Mode Query Parameter Routing
-  if (view === 'landing') return <LandingPage />;
-  if (view === 'app') return <ClientApp />;
-  if (view === 'merchant') return <Navigate to="/merchant" replace />;
-  if (view === 'driver') return <Navigate to="/driver" replace />;
-  if (view === 'admin') return <Navigate to="/admin" replace />;
-  if (view === 'crm') return <Navigate to="/crm" replace />;
-  if (view === 'saas') return <SaaSDashboard />;
-
-  // Fallback: Default to Landing Page
-  return <LandingPage />;
+  // Multi-Domain Routing Logic (Strict Switch for Production)
+  switch (hostname) {
+    case 'letsgofood.fr':
+    case 'www.letsgofood.fr':
+      return <LandingPage />;
+    case 'app.letsgofood.fr':
+      return <ClientAppRoutes />;
+    case 'merchant.letsgofood.fr':
+      return <MerchantRoutes />;
+    case 'driver.letsgofood.fr':
+      return <DriverRoutes />;
+    case 'saas.letsgofood.fr':
+      return <SaaSRoutes />;
+    case 'crm.letsgofood.fr':
+      return <CRMRoutes />;
+    case 'admin.letsgofood.fr':
+      return <AdminRoutes />;
+    default:
+      return <UnauthorizedDomain />;
+  }
 };
 
 /**
- * Stabilized Dispatcher Wrapper
- * Prevents "removeChild" errors by giving React a clear identity for the root component
+ * Isolated Application Scope: Client App
+ */
+const ClientAppRoutes = () => (
+  <Routes>
+    <Route path="/" element={<ClientApp />} />
+    <Route path="/store/:id" element={<Store />} />
+    <Route path="/track/:id" element={<OrderTracking />} />
+    <Route path="*" element={<Navigate to="/" replace />} />
+  </Routes>
+);
+
+/**
+ * Isolated Application Scope: Merchant
+ */
+const MerchantRoutes = () => (
+  <Routes>
+    <Route path="/" element={<ProtectedRoute><MerchantDashboard /></ProtectedRoute>} />
+    <Route path="*" element={<Navigate to="/" replace />} />
+  </Routes>
+);
+
+/**
+ * Isolated Application Scope: Driver
+ */
+const DriverRoutes = () => (
+  <Routes>
+    <Route path="/" element={<ProtectedRoute><DriverDashboard /></ProtectedRoute>} />
+    <Route path="*" element={<Navigate to="/" replace />} />
+  </Routes>
+);
+
+/**
+ * Isolated Application Scope: SaaS
+ */
+const SaaSRoutes = () => (
+  <Routes>
+    <Route path="/" element={<ProtectedRoute><SaaSDashboard /></ProtectedRoute>} />
+    <Route path="*" element={<Navigate to="/" replace />} />
+  </Routes>
+);
+
+/**
+ * Isolated Application Scope: CRM
+ */
+const CRMRoutes = () => (
+  <Routes>
+    <Route path="/" element={<ProtectedRoute><CRMPanel /></ProtectedRoute>} />
+    <Route path="*" element={<Navigate to="/" replace />} />
+  </Routes>
+);
+
+/**
+ * Isolated Application Scope: Admin
+ */
+const AdminRoutes = () => (
+  <Routes>
+    <Route path="/" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
+    <Route path="*" element={<Navigate to="/" replace />} />
+  </Routes>
+);
+
+/**
+ * Unauthorized Domain Fallback
+ */
+const UnauthorizedDomain = () => (
+  <div className="min-h-screen bg-[#08090a] flex flex-col items-center justify-center p-8 text-center">
+    <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
+      <Loader2 className="w-10 h-10 text-red-500 opacity-50" />
+    </div>
+    <h1 className="text-3xl font-black italic tracking-tighter text-white mb-2">DOMAIN UNAUTHORIZED</h1>
+    <p className="text-white/40 max-w-sm text-sm">
+      This domain is not configured within the LetsGoFood Multi-App Ecosystem. 
+      Please contact your administrator for provisioning at letsgofood.fr
+    </p>
+  </div>
+);
+
+/**
+ * Stabilized Dispatcher
  */
 const StabilizedDispatcher = () => {
   const [searchParams] = useSearchParams();
@@ -74,7 +154,7 @@ const StabilizedDispatcher = () => {
   
   return (
     <div key={`lgf-root-${hostname}-${view}`} className="min-h-screen bg-[#08090a]">
-      <DomainDispatcher />
+      <DomainDispatcher view={view} />
     </div>
   );
 };
@@ -82,48 +162,14 @@ const StabilizedDispatcher = () => {
 export default function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<StabilizedDispatcher />} />
-          <Route path="/login" element={<Login />} />
-          
-          {/* Ecosystem Modules */}
-          <Route path="/merchant" element={<ProtectedRoute><div className="min-h-screen bg-[#08090a] flex flex-col items-center justify-center text-white font-mono uppercase tracking-[0.2em] gap-4"><Loader2 className="w-8 h-8 animate-spin text-emerald-500" /> MERCHANT INTERFACE :: SYNCING...</div></ProtectedRoute>} />
-          <Route path="/driver" element={<ProtectedRoute><div className="min-h-screen bg-[#08090a] flex flex-col items-center justify-center text-white font-mono uppercase tracking-[0.2em] gap-4"><Loader2 className="w-8 h-8 animate-spin text-emerald-500" /> DRIVER DISPATCH :: GPS READY</div></ProtectedRoute>} />
-          <Route 
-            path="/crm" 
-            element={
-              <ProtectedRoute>
-                <CRMPanel />
-              </ProtectedRoute>
-            } 
-          />
-          
-          <Route 
-            path="/saas" 
-            element={
-              <ProtectedRoute>
-                <SaaSDashboard />
-              </ProtectedRoute>
-            } 
-          />
-
-          <Route 
-            path="/admin" 
-            element={
-              <ProtectedRoute>
-                <AdminPanel />
-              </ProtectedRoute>
-            } 
-          />
-
-          <Route path="/store/:id" element={<Store />} />
-          <Route path="/track/:id" element={<OrderTracking />} />
-          
-          {/* Universal Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
+      <NotificationProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/*" element={<StabilizedDispatcher />} />
+          </Routes>
+        </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

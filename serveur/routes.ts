@@ -4,7 +4,8 @@ import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { config } from './config';
-import { User, Order, Agent, Lead, Event, Restaurant, Dish, AuditLog } from './models';
+import { User, Order, Agent, Lead, Event, Restaurant, Dish, AuditLog, Review } from './models';
+
 import { SocketManager } from './socket';
 import { getAI } from './ai';
 import { rateLimiter } from './services/gateway';
@@ -263,7 +264,7 @@ router.get('/restaurants', async (req, res) => {
             category: "French",
             rating: 4.8,
             deliveryTime: "25-30 min",
-            deliveryFee: 2.50
+            deliveryFee: 0
           },
           {
             _id: 'mock-2',
@@ -273,7 +274,7 @@ router.get('/restaurants', async (req, res) => {
             category: "Japanese",
             rating: 4.9,
             deliveryTime: "20-35 min",
-            deliveryFee: 1.00
+            deliveryFee: 0
           }
         ]);
       }
@@ -312,6 +313,31 @@ router.get('/restaurants/:id/dishes', async (req, res) => {
   }
 });
 
+router.get('/restaurants/:id/reviews', async (req, res) => {
+  try {
+    const reviews = await Review.find({ restaurantId: req.params.id }).sort({ createdAt: -1 });
+    res.json(reviews);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/restaurants/:id/reviews', authenticate, async (req, res) => {
+  try {
+    const { rating, comment } = req.body;
+    const review = await Review.create({
+      restaurantId: req.params.id,
+      userId: (req as any).user.userId,
+      userName: (req as any).user.email.split('@')[0], // Simple display name from email
+      rating,
+      comment
+    });
+    res.status(201).json(review);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // --- Role-Based Operations ---
 
 // MERCHANT: Get restaurant orders
@@ -328,8 +354,83 @@ router.get('/merchant/orders', authenticate, authorize(['merchant', 'admin']), a
 // DRIVER: Available deliveries
 router.get('/driver/available', authenticate, authorize(['driver', 'admin']), async (req, res) => {
   try {
-    const orders = await Order.find({ status: 'ready' });
+    const orders = await Order.find({ status: 'ready' }).populate('restaurantId');
     res.json(orders);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/driver/accept/:id', authenticate, authorize(['driver', 'admin']), async (req, res) => {
+  try {
+    const order = await Order.findOneAndUpdate(
+      { _id: req.params.id, status: 'ready' },
+      { 
+        status: 'picked_up', 
+        driverId: (req as any).user.userId,
+        updatedAt: new Date() 
+      },
+      { new: true }
+    );
+    if (!order) return res.status(404).json({ error: 'Order not available or already taken' });
+    
+    await emitEvent('ORDER_PICKED_UP', order, (req as any).user.userId, (req as any).correlationId);
+    res.json(order);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/driver/active', authenticate, authorize(['driver', 'admin']), async (req, res) => {
+  try {
+    const orders = await Order.find({ 
+      driverId: (req as any).user.userId, 
+      status: { $in: ['picked_up'] } 
+    }).populate('restaurantId');
+    res.json(orders);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/driver/location', authenticate, authorize(['driver', 'admin']), async (req, res) => {
+  try {
+    const { orderId, location } = req.body;
+    if (!orderId || !location) return res.status(400).json({ error: 'Missing orderId or location' });
+    
+    // Broadcast via WS
+    SocketManager.getInstance().broadcastLocationUpdate(orderId, location);
+    
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/orders/:id/tip', async (req, res) => {
+  try {
+    const { amount } = req.body;
+    if (typeof amount !== 'number' || amount < 0) return res.status(400).json({ error: 'Invalid tip amount' });
+    
+    const order = await Order.findByIdAndUpdate(
+      req.params.id, 
+      { tip: amount, updatedAt: new Date() },
+      { new: true }
+    );
+    
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    
+    res.json(order);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/orders/:id', async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id).populate('restaurantId');
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    res.json(order);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -340,6 +441,7 @@ router.post('/seed', async (req, res) => {
   try {
     await Restaurant.deleteMany({});
     await Dish.deleteMany({});
+    await Review.deleteMany({});
     Cache.invalidatePattern('restaurants');
     Cache.invalidatePattern('dishes');
 
@@ -350,7 +452,7 @@ router.post('/seed', async (req, res) => {
       category: "French",
       rating: 4.8,
       deliveryTime: "25-35 min",
-      deliveryFee: 2.99,
+      deliveryFee: 0,
       featured: true
     });
 
@@ -361,14 +463,22 @@ router.post('/seed', async (req, res) => {
       category: "Japanese",
       rating: 4.9,
       deliveryTime: "20-30 min",
-      deliveryFee: 1.50
+      deliveryFee: 0
     });
 
     await Dish.create([
-      { restaurantId: r1._id, name: "Escargots de Bourgogne", description: "Snails in garlic butter", price: 12.50, category: "Starters" },
-      { restaurantId: r1._id, name: "Boeuf Bourguignon", description: "Slow-cooked beef in red wine", price: 24.00, category: "Mains" },
-      { restaurantId: r2._id, name: "Salmon Nigiri", description: "Fresh Atlantic salmon over rice", price: 6.50, category: "Sushi" },
-      { restaurantId: r2._id, name: "Miso Ramen", description: "Hearty broth with noodles and pork", price: 14.00, category: "Hot Dishes" }
+      { restaurantId: r1._id, name: "Escargots de Bourgogne", description: "Snails in garlic butter", price: 12.50, category: "Starters", featured: true },
+      { restaurantId: r1._id, name: "Boeuf Bourguignon", description: "Slow-cooked beef in red wine", price: 24.00, category: "Mains", featured: true },
+      { restaurantId: r1._id, name: "Crème Brûlée", description: "Classic vanilla custard", price: 8.50, category: "Desserts" },
+      { restaurantId: r2._id, name: "Salmon Nigiri", description: "Fresh Atlantic salmon over rice", price: 6.50, category: "Sushi", featured: true },
+      { restaurantId: r2._id, name: "Miso Ramen", description: "Hearty broth with noodles and pork", price: 14.00, category: "Hot Dishes", featured: true },
+      { restaurantId: r2._id, name: "Tempura Shrimp", description: "Crispy battered shrimp", price: 11.00, category: "Starters" }
+    ]);
+
+    await Review.create([
+      { restaurantId: r1._id, userName: "JeanD", rating: 5, comment: "Incroyable ! Le bœuf est fondant." },
+      { restaurantId: r1._id, userName: "Marie", rating: 4, comment: "Très bon, mais un peu long à la livraison." },
+      { restaurantId: r2._id, userName: "Kento", rating: 5, comment: "Best sushi in town!" }
     ]);
 
     res.json({ message: "Seeded successfully" });
@@ -380,21 +490,34 @@ router.post('/seed', async (req, res) => {
 // --- Payments ---
 router.post('/payments/create-session', async (req, res) => {
   try {
-    const { amount } = req.body;
+    const { amount, items, restaurantId } = req.body;
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      line_items: [{
-        price_data: {
-          currency: 'eur',
-          product_data: { name: 'Commande LetsGoFood' },
-          unit_amount: amount,
-        },
-        quantity: 1,
-      }],
+      line_items: [
+        {
+          price_data: {
+            currency: 'eur',
+            product_data: { name: 'Articles Panier LetsGoFood' },
+            unit_amount: amount,
+          },
+          quantity: 1,
+        }
+      ],
       mode: 'payment',
-      success_url: `${config.APP_URL}/success`,
+      success_url: `${config.APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${config.APP_URL}/cancel`,
     });
+
+    // Create a pending order pre-payment
+    await Order.create({
+      userId: (req as any).user?.userId,
+      restaurantId,
+      items,
+      amount: amount / 100,
+      status: 'pending',
+      stripeSessionId: session.id
+    });
+
     res.json({ id: session.id, url: session.url });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -416,10 +539,15 @@ router.post('/webhook/stripe', express.raw({ type: 'application/json' }), async 
     const session = event.data.object as Stripe.Checkout.Session;
     console.log('💰 Payment successful:', session.id);
     
+    // Update order status in DB
+    const order = await Order.findOneAndUpdate({ stripeSessionId: session.id }, { status: 'paid', updatedAt: new Date() }, { new: true });
+    
+    if (order) {
+      await emitEvent('ORDER_PAID', order, order.userId?.toString(), (req as any).correlationId);
+    }
+
     // Offload heavy processing to Async Queue
     await Queue.push('PROCESS_PAYMENT_RECEIPT', { sessionId: session.id });
-    
-    SocketManager.getInstance().broadcast('PAYMENT_SUCCESS', { sessionId: session.id });
   }
 
   res.json({ received: true });
