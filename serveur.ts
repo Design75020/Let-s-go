@@ -2,16 +2,16 @@ import express from 'express';
 import http from 'http';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { config } from './server/config';
-import { createApp } from './server/app';
-import { SocketManager } from './server/socket';
+import { config } from './serveur/config';
+import { createApp } from './serveur/app';
+import { SocketManager } from './serveur/socket';
 
 async function startServer() {
   const app = await createApp();
   const server = http.createServer(app);
 
   // Auto-setup admin & seed for demo
-  const { User, Restaurant, Dish } = await import('./server/models');
+  const { User, Restaurant, Dish } = await import('./serveur/models');
   const bcrypt = await import('bcryptjs');
   
   try {
