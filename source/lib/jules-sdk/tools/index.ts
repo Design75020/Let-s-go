@@ -1,5 +1,26 @@
 
+import { db } from '../../firebase';
+import { doc, runTransaction, serverTimestamp } from 'firebase/firestore';
+
 export class FirestoreTool {
+  async updateAtomic(docPath: string, data: any) {
+    console.log(`[JULES-TOOL] Firestore Atomic: Updating ${docPath}`);
+    try {
+      await runTransaction(db, async (transaction) => {
+        const docRef = doc(db, docPath);
+        transaction.update(docRef, {
+          ...data,
+          updatedAt: serverTimestamp(),
+          _lastExecutedBy: 'JULES_SDK'
+        });
+      });
+      return { success: true };
+    } catch (error) {
+      console.error(`[JULES-TOOL] Transaction failed for ${docPath}:`, error);
+      throw error;
+    }
+  }
+
   async update(docPath: string, data: any) {
     console.log(`[JULES-TOOL] Firestore: Updating ${docPath}`);
     return { success: true };

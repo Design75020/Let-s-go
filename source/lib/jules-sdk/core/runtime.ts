@@ -9,34 +9,63 @@ export interface JulesEvent {
 }
 
 export class JulesRuntime {
-  async handleEvent(event: JulesEvent) {
-    console.log(`[JULES-RUNTIME] Starting pipeline for event: ${event.type} [${event.correlationId}]`);
+  private readonly MAX_RETRIES = 3;
+  private readonly TIMEOUT_MS = 30000;
+
+  async handleEvent(event: JulesEvent, retryCount = 0): Promise<any> {
+    console.log(`[JULES-RUNTIME] Pipeline started: ${event.type} [${event.correlationId}] (Attempt ${retryCount + 1})`);
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("JULES Pipeline Timeout")), this.TIMEOUT_MS)
+    );
 
     try {
-      // 1. Build Context (Memory)
-      const context = await this.buildContext(event);
+      const result = await Promise.race([
+        this.executePipeline(event),
+        timeoutPromise
+      ]);
 
-      // 2. Policy Validation
-      const isAllowed = await this.validatePolicy(event, context);
-      if (!isAllowed) throw new Error("Policy violation: Action blocked by JULES Policy Engine.");
-
-      // 3. Agent Routing & Planning
-      const plan = await this.planExecution(event, context);
-
-      // 4. Execution & Tools
-      const results = await this.executePlan(plan);
-
-      // 5. Finalize Audit & Memory Update
-      await this.updateMemory(event, results);
-
-      console.log(`[JULES-RUNTIME] Pipeline completed successfully for ${event.correlationId}`);
-      return results;
+      console.log(`[JULES-RUNTIME] Pipeline success: ${event.correlationId}`);
+      return result;
 
     } catch (error) {
-      console.error(`[JULES-RUNTIME] Pipeline failed for ${event.correlationId}:`, error);
+      console.error(`[JULES-RUNTIME] Pipeline error: ${event.correlationId}:`, error);
+
+      if (retryCount < this.MAX_RETRIES && this.isRetryable(error)) {
+        const backoff = Math.pow(2, retryCount) * 1000;
+        await new Promise(res => setTimeout(res, backoff));
+        return this.handleEvent(event, retryCount + 1);
+      }
+
       await this.handleFailure(event, error);
       throw error;
     }
+  }
+
+  private async executePipeline(event: JulesEvent) {
+    // 1. Build Context (Memory)
+    const context = await this.buildContext(event);
+
+    // 2. Policy Validation
+    const isAllowed = await this.validatePolicy(event, context);
+    if (!isAllowed) throw new Error("Policy violation: Action blocked by JULES Policy Engine.");
+
+    // 3. Agent Routing & Planning
+    const plan = await this.planExecution(event, context);
+
+    // 4. Execution & Tools
+    const results = await this.executePlan(plan);
+
+    // 5. Finalize Audit & Memory Update
+    await this.updateMemory(event, results);
+
+    return results;
+  }
+
+  private isRetryable(error: any): boolean {
+    // Retry on network errors or transient system failures
+    const message = (error as Error).message;
+    return message.includes('Timeout') || message.includes('Unavailable');
   }
 
   private async buildContext(event: JulesEvent) {

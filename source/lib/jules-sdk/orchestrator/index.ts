@@ -21,20 +21,27 @@ export class JulesOrchestrator {
 
     const tasks: JulesTask[] = [];
 
-    // Simulate DAG Generation
+    // Enhanced DAG Generation
     if (event.type === 'order.created') {
       tasks.push({
-        id: 'task_1',
+        id: 'fraud_check',
         agent: 'OPS',
         action: 'RISK_ASSESSMENT',
         payload: { orderId: event.payload.resourceId }
       });
       tasks.push({
-        id: 'task_2',
+        id: 'payment_auth',
         agent: 'FINANCE',
         action: 'PAYMENT_RESERVATION',
         payload: { orderId: event.payload.resourceId },
-        dependsOn: ['task_1']
+        dependsOn: ['fraud_check']
+      });
+      tasks.push({
+        id: 'notify_merchant',
+        agent: 'OPS',
+        action: 'ORDER_PUSH',
+        payload: { orderId: event.payload.resourceId },
+        dependsOn: ['payment_auth']
       });
     }
 
