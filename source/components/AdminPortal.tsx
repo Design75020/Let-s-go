@@ -6,7 +6,7 @@ import {
   Settings, CreditCard, Map, Percent, Scale, Package, 
   Bell, Search, Calendar, ChevronDown, MoreVertical, 
   ArrowUpRight, ArrowDownRight, Clock, AlertTriangle, 
-  CheckCircle2, XCircle
+  CheckCircle2, XCircle, Globe, LogOut
 } from 'lucide-react';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, 
@@ -50,8 +50,8 @@ export default function AdminPortal() {
 
   return (
     <div className="flex min-h-screen bg-[#f8fafc] text-slate-800 font-sans selection:bg-blue-100 selection:text-blue-700">
-      {/* Sidebar */}
-      <aside className="w-72 bg-slate-900 text-slate-400 flex flex-col fixed h-full z-30 shadow-2xl">
+      {/* Sidebar for Desktop */}
+      <aside className="hidden lg:flex w-72 bg-slate-900 text-slate-400 flex-col fixed h-full z-30 shadow-2xl">
         <div className="p-8 pb-4">
           <div className="flex items-center gap-3 mb-10">
             <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
@@ -67,17 +67,14 @@ export default function AdminPortal() {
           
           <nav className="space-y-1">
             {[
-              { label: 'Tableau de bord', icon: LayoutDashboard },
-              { label: 'Commandes', icon: ShoppingBag },
-              { label: 'Restaurants', icon: Utensils },
-              { label: 'Livreurs', icon: Truck },
-              { label: 'Clients', icon: Users },
-              { label: 'Finance', icon: Wallet },
-              { label: 'Payouts', icon: Receipt },
-              { label: 'Catalogue', icon: BookOpen },
-              { label: 'Marketing', icon: Megaphone },
-              { label: 'Support', icon: HelpCircle },
-              { label: 'Paramètres', icon: Settings },
+              { label: 'Supervision Kernel', icon: LayoutDashboard },
+              { label: 'Applications Core', icon: Package },
+              { label: 'Plateforme Client (Live)', icon: Globe },
+              { label: 'Merchant Interface', icon: Utensils },
+              { label: 'Driver Dispatch', icon: Truck },
+              { label: 'SaaS Control Tower', icon: Settings },
+              { label: 'CRM & Sales', icon: Wallet },
+              { label: 'Acquisition (Marketing)', icon: Megaphone },
             ].map((item) => (
               <button
                 key={item.label}
@@ -92,23 +89,25 @@ export default function AdminPortal() {
                   <item.icon className="w-4 h-4" />
                   <span className="text-sm font-bold">{item.label}</span>
                 </div>
-                {item.label === 'Finance' && <ChevronDown className="w-4 h-4 opacity-40" />}
               </button>
             ))}
           </nav>
         </div>
 
         <div className="mt-8 px-8 pb-8">
-          <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-6 px-4">Configuration Business</div>
+          <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-6 px-4">Système & Support</div>
           <nav className="space-y-1">
             {[
-              { label: 'Configuration financière', icon: CreditCard },
-              { label: 'Zones de livraison', icon: Map },
-              { label: 'Frais de livraison', icon: Package },
-              { label: 'Règles de plateforme', icon: Scale },
-              { label: 'Modules & Fonctions', icon: Percent },
+              { label: 'Support Technique', icon: HelpCircle },
+              { label: 'Configuration Platform', icon: Scale },
             ].map((item) => (
-              <button key={item.label} className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white transition-all">
+              <button 
+                key={item.label} 
+                className={`w-full flex items-center gap-3 px-4 py-3 transition-all ${
+                  activeTab === item.label ? 'text-white font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+                onClick={() => setActiveTab(item.label)}
+              >
                 <item.icon className="w-4 h-4" />
                 <span className="text-sm font-bold">{item.label}</span>
               </button>
@@ -132,63 +131,85 @@ export default function AdminPortal() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 py-4 cursor-pointer group">
-            <div className="w-10 h-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-white overflow-hidden group-hover:border-blue-500/50 transition-all">
+          <div 
+            onClick={logout}
+            className="flex items-center gap-4 py-4 cursor-pointer group hover:bg-white/5 px-4 rounded-xl transition-all"
+          >
+            <div className="w-10 h-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-white overflow-hidden group-hover:border-blue-500/50 transition-all flex-shrink-0">
                {user?.photoURL ? <img src={user.photoURL} alt="" /> : <span className="text-xs font-black">Admin</span>}
             </div>
             <div className="flex-1 min-w-0">
                <p className="text-sm font-bold text-white truncate">{user?.name || 'LGF Admin'}</p>
                <p className="text-[10px] font-medium text-slate-500 truncate">{user?.email}</p>
             </div>
-            <MoreVertical className="w-4 h-4 text-slate-600 group-hover:text-white" />
+            <LogOut className="w-4 h-4 text-slate-600 group-hover:text-red-500" />
           </div>
         </div>
       </aside>
 
+      {/* Bottom Navigation for Mobile */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900 border-t border-white/5 px-4 md:px-6 py-3 flex items-center justify-between">
+        {[
+          { label: 'Supervision', icon: LayoutDashboard, tab: 'Supervision Kernel' },
+          { label: 'Live', icon: Globe, tab: 'Plateforme Client (Live)' },
+          { label: 'Merchant', icon: Utensils, tab: 'Merchant Interface' },
+          { label: 'SaaS', icon: Settings, tab: 'SaaS Control Tower' },
+          { label: 'Logout', icon: LogOut, action: logout },
+        ].map((item) => (
+          <button
+            key={item.label}
+            onClick={() => item.action ? item.action() : setActiveTab(item.tab || '')}
+            className={`p-3 md:p-4 rounded-xl transition-all ${
+              activeTab === item.tab
+                ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' 
+                : 'text-slate-500 hover:text-white'
+            }`}
+          >
+            <item.icon className="w-5 h-5 md:w-6 md:h-6" />
+          </button>
+        ))}
+      </nav>
+
       {/* Main Content */}
-      <main className="flex-1 ml-72 p-10 bg-[#f8fafc]">
+      <main className="flex-1 lg:ml-72 p-6 md:p-10 pb-24 md:pb-32 lg:pb-10 bg-[#f8fafc]">
         {/* Top Header */}
-        <header className="flex justify-between items-center mb-10">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
           <div>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900">{activeTab}</h1>
-            <p className="text-sm font-medium text-slate-400 mt-1">Vue d'ensemble de votre activité</p>
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900">{activeTab}</h1>
+            <p className="text-xs md:text-sm font-medium text-slate-400 mt-1">Vue d'ensemble de votre activité</p>
           </div>
           
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm text-sm font-bold text-slate-600">
-              <Calendar className="w-4 h-4 text-slate-400" />
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="flex-1 md:flex-none flex items-center gap-3 px-3 md:px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm text-[10px] md:text-sm font-bold text-slate-600 truncate">
+              <Calendar className="w-4 h-4 text-slate-400 flex-shrink-0" />
               01/05/2025 - 31/05/2025
-              <ChevronDown className="w-4 h-4 text-slate-400" />
+              <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
             </div>
-            <button className="relative p-3 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 transition-all">
+            <button className="relative p-2.5 md:p-3 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 transition-all flex-shrink-0">
               <Bell className="w-5 h-5 text-slate-600" />
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black flex items-center justify-center rounded-full border-2 border-[#f8fafc]">12</span>
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[9px] md:text-[10px] font-black flex items-center justify-center rounded-full border-2 border-[#f8fafc]">12</span>
             </button>
-            <div className="w-10 h-10 bg-green-500 text-white font-black flex items-center justify-center rounded-full text-lg shadow-lg shadow-green-500/20">
-              A
-            </div>
           </div>
         </header>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-5 gap-6 mb-10">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6 mb-10">
           {[
-            { label: 'Commandes totales', value: '2 458', trend: '+ 18.5%', icon: ShoppingBag, color: 'text-green-500', bg: 'bg-green-50', iconBg: 'bg-green-500' },
-            { label: "Chiffre d'affaires brut", value: '€ 56 420,00', trend: '+ 21.3%', icon: Wallet, color: 'text-purple-500', bg: 'bg-purple-50', iconBg: 'bg-purple-500' },
-            { label: 'Revenus plateforme', value: '€ 6 320,00', trend: '+ 15.7%', icon: CreditCard, color: 'text-orange-500', bg: 'bg-orange-50', iconBg: 'bg-orange-500' },
-            { label: 'Restaurants actifs', value: '128', trend: '+ 9.6%', icon: Utensils, color: 'text-blue-500', bg: 'bg-blue-50', iconBg: 'bg-blue-500' },
-            { label: 'Livreurs actifs', value: '312', trend: '+ 11.2%', icon: Truck, color: 'text-emerald-500', bg: 'bg-emerald-50', iconBg: 'bg-emerald-500' },
+            { label: 'Commandes', value: '2 458', trend: '+ 18%', icon: ShoppingBag, color: 'text-green-500', iconBg: 'bg-green-500' },
+            { label: "C.A. Brut", value: '€ 56 420', trend: '+ 21%', icon: Wallet, color: 'text-purple-500', iconBg: 'bg-purple-500' },
+            { label: 'Plateforme', value: '€ 6 320', trend: '+ 15%', icon: CreditCard, color: 'text-orange-500', iconBg: 'bg-orange-500' },
+            { label: 'Restaurants', value: '128', trend: '+ 9%', icon: Utensils, color: 'text-blue-500', iconBg: 'bg-blue-500' },
+            { label: 'Livreurs', value: '312', trend: '+ 11%', icon: Truck, color: 'text-emerald-500', iconBg: 'bg-emerald-500' },
           ].map((stat, i) => (
-            <div key={i} className="p-6 bg-white border border-slate-200 rounded-[2rem] shadow-sm relative overflow-hidden group hover:border-blue-500/30 transition-all">
-              <div className={`w-12 h-12 ${stat.iconBg} rounded-2xl flex items-center justify-center mb-4 text-white shadow-lg shadow-slate-100`}>
-                <stat.icon className="w-6 h-6" />
+            <div key={i} className="p-4 md:p-6 bg-white border border-slate-200 rounded-[1.5rem] md:rounded-[2rem] shadow-sm group hover:border-blue-500/30 transition-all">
+              <div className={`w-10 h-10 md:w-12 md:h-12 ${stat.iconBg} rounded-xl md:rounded-2xl flex items-center justify-center mb-3 md:mb-4 text-white shadow-lg`}>
+                <stat.icon className="w-5 h-5 md:w-6 md:h-6" />
               </div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
-              <h4 className="text-2xl font-black tracking-tight text-slate-900 mb-2">{stat.value}</h4>
-              <div className="flex items-center gap-1.5">
+              <p className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 truncate">{stat.label}</p>
+              <h4 className="text-lg md:text-2xl font-black tracking-tight text-slate-900 mb-1 md:mb-2">{stat.value}</h4>
+              <div className="flex items-center gap-1">
                 <ArrowUpRight className={`w-3 h-3 ${stat.color}`} />
-                <span className={`text-[10px] font-black ${stat.color}`}>{stat.trend}</span>
-                <span className="text-[10px] font-medium text-slate-400 ml-1">vs mois dernier</span>
+                <span className={`text-[9px] md:text-[10px] font-black ${stat.color}`}>{stat.trend}</span>
               </div>
             </div>
           ))}
@@ -197,33 +218,34 @@ export default function AdminPortal() {
         {/* Charts & Notifications Row */}
         <div className="grid grid-cols-12 gap-6 mb-10">
           {/* Main Chart */}
-          <div className="col-span-12 lg:col-span-8 p-8 bg-white border border-slate-200 rounded-[2.5rem] shadow-sm">
+          <div className="col-span-12 xl:col-span-8 p-6 md:p-8 bg-white border border-slate-200 rounded-[2rem] md:rounded-[2.5rem] shadow-sm">
             <div className="flex justify-between items-center mb-10">
               <div>
-                <h3 className="text-xl font-bold tracking-tight">Commandes par jour</h3>
+                <h3 className="text-lg md:text-xl font-bold tracking-tight">Commandes par jour</h3>
               </div>
-              <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-100 rounded-lg text-xs font-bold text-slate-600">
+              <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 bg-slate-100 rounded-lg text-[10px] font-bold text-slate-600 uppercase tracking-widest">
                 Par jour <ChevronDown className="w-3 h-3 opacity-40" />
               </div>
             </div>
             
-            <div className="h-80 w-full">
+            <div className="h-64 md:h-80 w-full anonymous-chart">
+               {/* Simplified chart for mobile performance if needed, but ResponsiveContainer should handle it */}
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={lineData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }} />
+                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#fff', borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                    itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                    contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                    itemStyle={{ fontSize: '10px', fontWeight: 'bold' }}
                   />
                   <Line 
                     type="monotone" 
                     dataKey="orders" 
                     stroke="#3b82f6" 
-                    strokeWidth={4} 
-                    dot={{ r: 4, fill: '#3b82f6', strokeWidth: 0 }} 
-                    activeDot={{ r: 6, strokeWidth: 0, fill: '#1e40af' }}
+                    strokeWidth={3} 
+                    dot={{ r: 3, fill: '#3b82f6', strokeWidth: 0 }} 
+                    activeDot={{ r: 5, strokeWidth: 0, fill: '#1e40af' }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -231,17 +253,17 @@ export default function AdminPortal() {
           </div>
 
           {/* Distribution Chart */}
-          <div className="col-span-12 lg:col-span-4 p-8 bg-white border border-slate-200 rounded-[2.5rem] shadow-sm flex flex-col">
-            <h3 className="text-xl font-bold tracking-tight mb-8">Répartition des commandes</h3>
-            <div className="flex-1 relative flex items-center justify-center">
-              <ResponsiveContainer width={240} height={240}>
+          <div className="col-span-12 xl:col-span-4 p-6 md:p-8 bg-white border border-slate-200 rounded-[2rem] md:rounded-[2.5rem] shadow-sm flex flex-col items-center">
+            <h3 className="text-lg md:text-xl font-bold tracking-tight mb-8 w-full text-left">Répartition</h3>
+            <div className="flex-1 relative flex items-center justify-center min-h-[200px]">
+              <ResponsiveContainer width={200} height={200}>
                 <PieChart>
                   <Pie
                     data={pieData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
+                    innerRadius={50}
+                    outerRadius={75}
                     paddingAngle={8}
                     dataKey="value"
                   >
@@ -253,18 +275,18 @@ export default function AdminPortal() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-x-0 bottom-0 top-0 flex flex-col items-center justify-center pointer-events-none">
-                <p className="text-2xl font-black tracking-tight">2 458</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total</p>
+                <p className="text-xl font-black tracking-tight">2 458</p>
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Total</p>
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4 mt-8">
+            <div className="grid grid-cols-2 gap-4 mt-8 w-full">
               {pieData.map((item, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 truncate uppercase tracking-tighter">{item.name}</p>
-                    <p className="text-xs font-black italic">{item.value} <span className="opacity-40 ml-1">({Math.round(item.value/2458*100)}%)</span></p>
+                <div key={i} className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                  <div className="min-w-0">
+                    <p className="text-[8px] font-bold text-slate-400 truncate uppercase tracking-tighter">{item.name}</p>
+                    <p className="text-[10px] font-black italic">{item.value}</p>
                   </div>
                 </div>
               ))}
@@ -275,58 +297,55 @@ export default function AdminPortal() {
         {/* Actionable Tables */}
         <div className="grid grid-cols-12 gap-6 mb-10">
           {/* Left Table: Orders */}
-          <div className="col-span-8 p-8 bg-white border border-slate-200 rounded-[2.5rem] shadow-sm">
+          <div className="col-span-12 xl:col-span-8 p-6 md:p-8 bg-white border border-slate-200 rounded-[2rem] md:rounded-[2.5rem] shadow-sm">
             <div className="flex justify-between items-center mb-8">
-               <h3 className="text-xl font-bold tracking-tight">Commandes récentes</h3>
-               <button className="text-blue-500 text-xs font-bold hover:underline">Voir toutes</button>
+               <h3 className="text-lg md:text-xl font-bold tracking-tight">Commandes récentes</h3>
+               <button className="text-blue-500 text-xs font-bold hover:underline uppercase tracking-widest">Tout voir</button>
             </div>
             
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className="overflow-x-auto scrollbar-hide">
+              <table className="w-full min-w-[600px]">
                 <thead>
-                  <tr className="text-left text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                    <th className="pb-4">ID Commande</th>
+                  <tr className="text-left text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                    <th className="pb-4">Commande</th>
                     <th className="pb-4">Restaurant</th>
                     <th className="pb-4">Client</th>
                     <th className="pb-4">Statut</th>
                     <th className="pb-4 text-right">Total</th>
-                    <th className="pb-4 text-right">Date</th>
                     <th className="pb-4"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {recentOrders.length > 0 ? recentOrders.map((order, i) => (
-                    <tr key={i} className="group hover:bg-slate-50/50 transition-colors">
-                      <td className="py-4 text-xs font-bold text-slate-500">#{order.id.slice(-6).toUpperCase()}</td>
-                      <td className="py-4 text-xs font-bold">{order.restaurantName || 'Resto LGF'}</td>
-                      <td className="py-4 text-xs font-medium text-slate-400">{order.clientName || 'Jean Dupont'}</td>
+                    <tr key={i} className="group hover:bg-slate-50/50 transition-colors text-xs">
+                      <td className="py-4 font-bold text-slate-500">#{order.id.slice(-6).toUpperCase()}</td>
+                      <td className="py-4 font-bold truncate max-w-[120px]">{order.restaurantName || 'Resto LGF'}</td>
+                      <td className="py-4 font-medium text-slate-400 truncate max-w-[100px]">{order.clientName || 'Jean D.'}</td>
                       <td className="py-4">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${
+                        <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter ${
                           order.status === 'delivered' ? 'bg-green-100 text-green-700' : 
                           order.status === 'pending' ? 'bg-blue-100 text-blue-700' :
                           'bg-orange-100 text-orange-700'
                         }`}>
-                          {order.status === 'delivered' ? 'Livrée' : order.status === 'pending' ? 'En préparation' : 'En livraison'}
+                          {order.status}
                         </span>
                       </td>
-                      <td className="py-4 text-xs font-black text-right">€ {order.total?.toFixed(2) || '28.40'}</td>
-                      <td className="py-4 text-xs font-medium text-slate-400 text-right">Aujourd'hui</td>
+                      <td className="py-4 font-black text-right">€ {order.total?.toFixed(2) || '28.40'}</td>
                       <td className="py-4 text-right">
                          <button className="p-1 hover:bg-slate-100 rounded-lg transition-colors">
                             <MoreVertical className="w-4 h-4 text-slate-400" />
                          </button>
                       </td>
                     </tr>
-                  )) : [1,2,3,4,5].map(i => (
-                    <tr key={i} className="group hover:bg-slate-50/50 transition-colors">
-                      <td className="py-4 text-xs font-bold text-slate-500">#CMD-0245{i}</td>
-                      <td className="py-4 text-xs font-bold">Pizza Napoli</td>
-                      <td className="py-4 text-xs font-medium text-slate-400">Jean Dupont</td>
+                  )) : [1,2,3].map(i => (
+                    <tr key={i} className="group hover:bg-slate-50/50 transition-colors text-xs">
+                      <td className="py-4 font-bold text-slate-500">#CMD-024{i}</td>
+                      <td className="py-4 font-bold">LGF Food</td>
+                      <td className="py-4 font-medium text-slate-400">Client LGF</td>
                       <td className="py-4">
-                        <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter bg-green-100 text-green-700">Livrée</span>
+                        <span className="px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter bg-green-100 text-green-700">DÉLIVRÉ</span>
                       </td>
-                      <td className="py-4 text-xs font-black text-right">€ 28,40</td>
-                      <td className="py-4 text-xs font-medium text-slate-400 text-right">31/05/2025 14:32</td>
+                      <td className="py-4 font-black text-right">€ 28.40</td>
                       <td className="py-4 text-right"><MoreVertical className="w-4 h-4 text-slate-400" /></td>
                     </tr>
                   ))}
@@ -336,18 +355,18 @@ export default function AdminPortal() {
           </div>
 
           {/* Right Panel: Alerts */}
-          <div className="col-span-4 p-8 bg-white border border-slate-200 rounded-[2.5rem] shadow-sm">
+          <div className="col-span-12 xl:col-span-4 p-6 md:p-8 bg-white border border-slate-200 rounded-[2rem] md:rounded-[2.5rem] shadow-sm">
              <div className="flex justify-between items-center mb-8">
-                <h3 className="text-xl font-bold tracking-tight">Alertes & Notifications</h3>
-                <button className="text-blue-500 text-xs font-bold hover:underline">Tout voir</button>
+                <h3 className="text-lg md:text-xl font-bold tracking-tight">Alertes</h3>
+                <button className="text-blue-500 text-xs font-bold hover:underline uppercase tracking-widest">Tout</button>
              </div>
              
              <div className="space-y-6">
                 {[
-                  { title: 'Payouts échoués', desc: '8 transferts ont échoué', type: 'error', icon: AlertTriangle, time: 'Il y a 5 min' },
-                  { title: 'Compte restaurant en attente', desc: 'KYC en attente pour 3 restaurants', type: 'warning', icon: AlertTriangle, time: 'Il y a 25 min' },
-                  { title: 'Nouveau restaurant', desc: '"Burger House" vient de s\'inscrire', type: 'info', icon: Bell, time: 'Il y a 1 h' },
-                  { title: 'Payouts complétés', desc: '12 payouts ont été traités', type: 'success', icon: CheckCircle2, time: 'Il y a 2 h' },
+                  { title: 'Payouts échoués', desc: '8 transferts ont échoué', type: 'error', icon: AlertTriangle, time: '5m' },
+                  { title: 'KYC en attente', desc: '3 restaurants', type: 'warning', icon: AlertTriangle, time: '25m' },
+                  { title: 'Nouveau resto', desc: '"Burger House"', type: 'info', icon: Bell, time: '1h' },
+                  { title: 'Payouts ok', desc: '12 payouts traités', type: 'success', icon: CheckCircle2, time: '2h' },
                 ].map((alert, i) => (
                   <div key={i} className="flex gap-4 group cursor-pointer hover:translate-x-1 transition-transform">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
@@ -362,11 +381,11 @@ export default function AdminPortal() {
                       }`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start mb-1">
-                        <p className="text-sm font-bold text-slate-800 line-clamp-1">{alert.title}</p>
-                        <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap ml-2">{alert.time}</span>
+                      <div className="flex justify-between items-start mb-0.5">
+                        <p className="text-[11px] md:text-sm font-bold text-slate-800 line-clamp-1 truncate">{alert.title}</p>
+                        <span className="text-[9px] font-medium text-slate-400 whitespace-nowrap ml-2">{alert.time}</span>
                       </div>
-                      <p className="text-xs text-slate-400 font-medium line-clamp-1">{alert.desc}</p>
+                      <p className="text-[10px] text-slate-400 font-medium line-clamp-1">{alert.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -375,106 +394,108 @@ export default function AdminPortal() {
         </div>
 
         {/* Second Table Row: Payouts */}
-        <div className="grid grid-cols-12 gap-6 mb-10">
-          <div className="col-span-12 p-8 bg-white border border-slate-200 rounded-[2.5rem] shadow-sm">
+        <div className="grid grid-cols-1 gap-6 mb-10">
+          <div className="p-6 md:p-8 bg-white border border-slate-200 rounded-[2rem] md:rounded-[2.5rem] shadow-sm">
              <div className="flex justify-between items-center mb-8">
-                <h3 className="text-xl font-bold tracking-tight">Payouts récents</h3>
-                <button className="text-blue-500 text-xs font-bold hover:underline">Voir tous</button>
+                <h3 className="text-xl font-bold tracking-tight">Payouts</h3>
+                <button className="text-blue-500 text-xs font-bold hover:underline tracking-widest uppercase">Tout voir</button>
              </div>
-             <table className="w-full">
-                <thead>
-                  <tr className="text-left text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                    <th className="pb-4">ID Payout</th>
-                    <th className="pb-4">Bénéficiaire</th>
-                    <th className="pb-4">Montant</th>
-                    <th className="pb-4">Statut</th>
-                    <th className="pb-4 text-right">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                   {[
-                     { id: 'PO-001254', name: 'Pizza Napoli', amount: '€ 320,00', status: 'Payé', type: 'success' },
-                     { id: 'PO-001253', name: 'Sushi Master', amount: '€ 450,75', status: 'Payé', type: 'success' },
-                     { id: 'PO-001252', name: 'Ahmed Ali (Livreur)', amount: '€ 85,40', status: 'Payé', type: 'success' },
-                   ].map((p, i) => (
-                    <tr key={i} className="group hover:bg-slate-50/50 transition-colors">
-                      <td className="py-4 text-xs font-bold text-slate-500">{p.id}</td>
-                      <td className="py-4 text-xs font-black">{p.name}</td>
-                      <td className="py-4 text-xs font-black">{p.amount}</td>
-                      <td className="py-4">
-                        <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter bg-green-100 text-green-700">{p.status}</span>
-                      </td>
-                      <td className="py-4 text-xs font-medium text-slate-400 text-right">31/05/2025</td>
+             <div className="overflow-x-auto scrollbar-hide">
+               <table className="w-full min-w-[500px]">
+                  <thead>
+                    <tr className="text-left text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                      <th className="pb-4">ID</th>
+                      <th className="pb-4">Bénéficiaire</th>
+                      <th className="pb-4">Montant</th>
+                      <th className="pb-4">Statut</th>
+                      <th className="pb-4 text-right">Date</th>
                     </tr>
-                   ))}
-                </tbody>
-             </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 text-xs">
+                     {[
+                       { id: 'PO-001254', name: 'Napoli', amount: '€ 320.00', status: 'Payé' },
+                       { id: 'PO-001253', name: 'Sushi', amount: '€ 450.75', status: 'Payé' },
+                       { id: 'PO-001252', name: 'Ahmed', amount: '€ 85.40', status: 'Payé' },
+                     ].map((p, i) => (
+                      <tr key={i} className="group hover:bg-slate-50/50 transition-colors">
+                        <td className="py-4 font-bold text-slate-500">{p.id}</td>
+                        <td className="py-4 font-black truncate">{p.name}</td>
+                        <td className="py-4 font-black">{p.amount}</td>
+                        <td className="py-4">
+                          <span className="px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter bg-green-100 text-green-700">{p.status}</span>
+                        </td>
+                        <td className="py-4 text-slate-400 text-right">31/05/25</td>
+                      </tr>
+                     ))}
+                  </tbody>
+               </table>
+             </div>
           </div>
         </div>
 
         {/* Bottom Section: Operations & Financials */}
-        <div className="grid grid-cols-12 gap-6">
+        <div className="grid grid-cols-12 gap-6 pb-20 md:pb-0">
           {/* Financial Overview */}
-          <div className="col-span-8 p-8 bg-white border border-slate-200 rounded-[2.5rem] shadow-sm">
-             <h3 className="text-xl font-bold tracking-tight mb-10">Aperçu financier</h3>
-             <div className="grid grid-cols-4 gap-8 mb-12">
+          <div className="col-span-12 xl:col-span-8 p-6 md:p-8 bg-white border border-slate-200 rounded-[2rem] md:rounded-[2.5rem] shadow-sm">
+             <h3 className="text-lg md:text-xl font-bold tracking-tight mb-10">Finances</h3>
+             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 mb-12">
                 {[
-                  { label: 'Total brut', val: '€ 56 420,00' },
-                  { label: 'Frais livraison', val: '€ 8 240,00' },
-                  { label: 'Frais plateforme', val: '€ 6 320,00' },
-                  { label: 'Montant transféré', val: '€ 41 860,00' },
+                  { label: 'Brut', val: '€ 56K' },
+                  { label: 'Livraison', val: '€ 8K' },
+                  { label: 'Plateforme', val: '€ 6K' },
+                  { label: 'Transféré', val: '€ 41K' },
                 ].map((item, i) => (
                   <div key={i}>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{item.label}</p>
-                    <p className="text-xl font-black italic tracking-tight">{item.val}</p>
+                    <p className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 truncate">{item.label}</p>
+                    <p className="text-lg md:text-xl font-black italic tracking-tight">{item.val}</p>
                   </div>
                 ))}
              </div>
              
-             <div className="relative h-4 bg-slate-100 rounded-full flex overflow-hidden">
+             <div className="relative h-3 md:h-4 bg-slate-100 rounded-full flex overflow-hidden">
                 <div className="h-full bg-green-500" style={{ width: '74%' }} />
                 <div className="h-full bg-orange-500" style={{ width: '11%' }} />
                 <div className="h-full bg-blue-500" style={{ width: '15%' }} />
              </div>
-             <div className="flex gap-8 mt-6">
+             <div className="flex flex-wrap gap-4 md:gap-8 mt-6">
                 {[
-                  { label: 'Transféré aux partenaires (74.1%)', color: 'bg-green-500' },
-                  { label: 'Frais plateforme (11.2%)', color: 'bg-orange-500' },
-                  { label: 'Frais livraison (14.6%)', color: 'bg-blue-500' },
+                  { label: 'Partenaires (74.1%)', color: 'bg-green-500' },
+                  { label: 'LGF (11.2%)', color: 'bg-orange-500' },
+                  { label: 'Logistique (14.6%)', color: 'bg-blue-500' },
                 ].map((legend, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded ${legend.color}`} />
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{legend.label}</span>
+                    <div className={`w-2 h-2 md:w-3 md:h-3 rounded flex-shrink-0 ${legend.color}`} />
+                    <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-tighter truncate">{legend.label}</span>
                   </div>
                 ))}
              </div>
           </div>
 
           {/* Real-time Activity */}
-          <div className="col-span-4 p-8 bg-white border border-slate-200 rounded-[2.5rem] shadow-sm">
+          <div className="col-span-12 xl:col-span-4 p-6 md:p-8 bg-white border border-slate-200 rounded-[2rem] md:rounded-[2.5rem] shadow-sm">
              <div className="flex items-center gap-3 mb-8">
-                <h3 className="text-xl font-bold tracking-tight">Activité en temps réel</h3>
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <h3 className="text-lg md:text-xl font-bold tracking-tight">Activité</h3>
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse flex-shrink-0" />
              </div>
              
              <div className="space-y-6">
                 {[
-                  { time: 'Il y a 10 sec', event: 'Nouvelle commande #CMD-02459', detail: 'Pizza Napoli • € 32,60', color: 'bg-green-500' },
-                  { time: 'Il y a 32 sec', event: 'Paiement réussi', detail: '#PAY-02459 • € 32,60', color: 'bg-blue-500' },
-                  { time: 'Il y a 1 min', event: 'Commande acceptée par le restaurant', detail: '#CMD-02458 • Pizza Napoli', color: 'bg-orange-500' },
-                  { time: 'Il y a 2 min', event: 'Livreur assigné', detail: '#CMD-02457 • Ahmed Ali', color: 'bg-emerald-500' },
+                  { time: '10s', event: 'Cmd #2459', detail: 'Napoli • €32', color: 'bg-green-500' },
+                  { time: '32s', event: 'Pay OK', detail: '#PAY-2459', color: 'bg-blue-500' },
+                  { time: '1m', event: 'Cmd #2458 OK', detail: 'Restaurant Napoli', color: 'bg-orange-500' },
+                  { time: '2m', event: 'Livreur OK', detail: 'Ahmed A.', color: 'bg-emerald-500' },
                 ].map((activity, i) => (
                   <div key={i} className="flex gap-4">
                     <div className="flex flex-col items-center">
-                       <div className={`w-3 h-3 rounded-full ${activity.color} ring-4 ring-white shadow-sm z-10`} />
-                       {i < 3 && <div className="w-px h-12 bg-slate-100 -mb-3" />}
+                       <div className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full ${activity.color} ring-4 ring-white shadow-sm z-10 flex-shrink-0`} />
+                       {i < 3 && <div className="w-px h-10 bg-slate-100 -mb-2" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start mb-1">
-                        <p className="text-xs font-black text-slate-800 line-clamp-1">{activity.event}</p>
-                        <span className="text-[10px] font-medium text-slate-400 ml-2">{activity.time}</span>
+                      <div className="flex justify-between items-start mb-0.5">
+                        <p className="text-[11px] md:text-xs font-black text-slate-800 line-clamp-1 truncate">{activity.event}</p>
+                        <span className="text-[8px] md:text-[10px] font-medium text-slate-400 ml-2">{activity.time}</span>
                       </div>
-                      <p className="text-[10px] font-bold text-slate-400 italic line-clamp-1">{activity.detail}</p>
+                      <p className="text-[9px] md:text-[10px] font-bold text-slate-400 italic line-clamp-1 truncate">{activity.detail}</p>
                     </div>
                   </div>
                 ))}

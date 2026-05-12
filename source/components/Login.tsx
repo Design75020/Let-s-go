@@ -79,6 +79,13 @@ export default function Login() {
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Mail className="w-5 h-5" />}
             ACCÈS CLIENT
           </button>
+
+          <button 
+             onClick={() => navigate('/admin')}
+             className="w-full mt-4 text-[10px] font-black text-white/20 hover:text-white/40 tracking-widest uppercase transition-all"
+          >
+             Accès SaaS Control Tower (Admin)
+          </button>
         </div>
 
         <div className="mt-12 flex items-center justify-center gap-2 text-white/20">
