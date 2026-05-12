@@ -1,14 +1,22 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, Suspense, Component, ErrorInfo, ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import LandingPage from './components/LandingPage';
 import Login from './components/Login';
 import ProtectedRoute from './components/ProtectedRoute';
-import MerchantPortal from './components/MerchantPortal';
-import DriverApp from './components/DriverApp';
-import ClientStore from './components/ClientStore';
-import AdminPortal from './components/AdminPortal';
+
+const MerchantPortal = React.lazy(() => import('./components/MerchantPortal'));
+const DriverApp = React.lazy(() => import('./components/DriverApp'));
+const ClientStore = React.lazy(() => import('./components/ClientStore'));
+const AdminPortal = React.lazy(() => import('./components/AdminPortal'));
+
+const AppContainer = ({ children }: { children: React.ReactNode }) => (
+  <Routes>
+    <Route path="/login" element={<Login />} />
+    <Route path="/*" element={children} />
+  </Routes>
+);
 
 const UnauthorizedDomain = () => (
   <div className="min-h-screen bg-[#08090a] text-white flex flex-col items-center justify-center p-6 text-center">
@@ -23,6 +31,34 @@ const UnauthorizedDomain = () => (
   </div>
 );
 
+const ErrorBoundary = ({ children }: { children: ReactNode }) => {
+  const [hasError, setHasError] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleError = (error: ErrorEvent) => {
+      console.error("ErrorBoundary caught an error:", error);
+      setHasError(true);
+    };
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
+
+  if (hasError) {
+    return (
+      <div className="min-h-screen bg-[#08090a] text-white flex flex-col items-center justify-center p-6 text-center">
+        <h1 className="text-2xl font-bold mb-4">Une erreur est survenue</h1>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-6 py-2 bg-[#ff385c] rounded-full font-bold"
+        >
+          Recharger la page
+        </button>
+      </div>
+    );
+  }
+  return <>{children}</>;
+};
+
 export default function App() {
   const hostname = window.location.hostname;
 
@@ -34,32 +70,32 @@ export default function App() {
       
       case 'app.letsgofood.fr':
         return (
-          <ProtectedRoute>
-            <ClientStore />
-          </ProtectedRoute>
+          <AppContainer>
+            <ProtectedRoute><ClientStore /></ProtectedRoute>
+          </AppContainer>
         );
 
       case 'merchant.letsgofood.fr':
         return (
-          <ProtectedRoute>
-            <MerchantPortal />
-          </ProtectedRoute>
+          <AppContainer>
+            <ProtectedRoute><MerchantPortal /></ProtectedRoute>
+          </AppContainer>
         );
 
       case 'driver.letsgofood.fr':
         return (
-          <ProtectedRoute>
-            <DriverApp />
-          </ProtectedRoute>
+          <AppContainer>
+            <ProtectedRoute><DriverApp /></ProtectedRoute>
+          </AppContainer>
         );
 
       case 'admin.letsgofood.fr':
       case 'saas.letsgofood.fr':
       case 'crm.letsgofood.fr':
         return (
-          <ProtectedRoute>
-            <AdminPortal />
-          </ProtectedRoute>
+          <AppContainer>
+            <ProtectedRoute><AdminPortal /></ProtectedRoute>
+          </AppContainer>
         );
 
       // Local development fallback & AIS previews
@@ -102,10 +138,18 @@ export default function App() {
   }, [hostname]);
 
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        {AppContent}
-      </BrowserRouter>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <BrowserRouter>
+          <Suspense fallback={
+            <div className="min-h-screen bg-[#08090a] flex items-center justify-center">
+              <div className="w-8 h-8 border-4 border-[#ff385c] border-t-transparent rounded-full animate-spin" />
+            </div>
+          }>
+            {AppContent}
+          </Suspense>
+        </BrowserRouter>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

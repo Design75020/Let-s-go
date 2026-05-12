@@ -73,6 +73,7 @@ export default function ClientStore() {
   const placeOrder = async () => {
     if (!user || basketArray.length === 0 || !selectedResto) return;
     setOrderStatus('ordering');
+    console.log(`[ORDER] Placing order for ${user.name} at ${selectedResto.name}`);
     try {
       const docRef = await addDoc(collection(db, 'orders'), {
         clientId: user.uid,

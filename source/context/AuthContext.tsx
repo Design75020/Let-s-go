@@ -76,8 +76,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    await signOut(auth);
-    setUser(null);
+    console.log("[AUTH] Logging out user:", user?.uid);
+    try {
+      await signOut(auth);
+      setUser(null);
+      // Force reload to clear all memory listeners
+      window.location.href = '/';
+    } catch (error) {
+      console.error("[AUTH] Logout error:", error);
+    }
   };
 
   return (
