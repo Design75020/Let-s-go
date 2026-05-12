@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ShoppingBag, MapPin, Star, Clock, ChevronLeft, Plus, Minus, CheckCircle2, LogOut, Settings } from 'lucide-react';
+import { Search, ShoppingBag, MapPin, Star, Clock, ChevronLeft, Plus, Minus, CheckCircle2, LogOut, Settings, Utensils } from 'lucide-react';
 import { db } from '../lib/firebase';
-import { collection, onSnapshot, query, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, addDoc, serverTimestamp, doc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 
 export default function ClientStore() {
@@ -11,7 +11,11 @@ export default function ClientStore() {
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [basket, setBasket] = useState<{[key: string]: any}>({});
   const [isBasketOpen, setIsBasketOpen] = useState(false);
-  const [orderStatus, setOrderStatus] = useState<'idle' | 'ordering' | 'success'>('idle');
+  const [orderStatus, setOrderStatus] = useState<'idle' | 'ordering' | 'success' | 'tracking'>('idle');
+  const [activeOrder, setActiveOrder] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('Tous');
+  const [location, setLocation] = useState('Paris, FR');
   const { user, logout } = useAuth();
 
   useEffect(() => {
@@ -21,6 +25,16 @@ export default function ClientStore() {
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (orderStatus !== 'tracking' || !activeOrder) return;
+    const unsubscribe = onSnapshot(doc(db, 'orders', activeOrder.id), (snapshot) => {
+      if (snapshot.exists()) {
+        setActiveOrder({ id: snapshot.id, ...snapshot.data() });
+      }
+    });
+    return () => unsubscribe();
+  }, [orderStatus, activeOrder?.id]);
 
   useEffect(() => {
     if (!selectedResto) return;
@@ -53,14 +67,14 @@ export default function ClientStore() {
     });
   };
 
-  const basketArray = Object.values(basket);
+  const basketArray = Object.values(basket) as any[];
   const totalPrice = basketArray.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
   const placeOrder = async () => {
     if (!user || basketArray.length === 0 || !selectedResto) return;
     setOrderStatus('ordering');
     try {
-      await addDoc(collection(db, 'orders'), {
+      const docRef = await addDoc(collection(db, 'orders'), {
         clientId: user.uid,
         clientName: user.name,
         restaurantId: selectedResto.id,
@@ -69,13 +83,20 @@ export default function ClientStore() {
         total: totalPrice,
         status: 'pending',
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        location: location
       });
+
+      const newOrder = {
+        id: docRef.id,
+        restaurantName: selectedResto.name,
+        total: totalPrice,
+        status: 'pending'
+      };
+
+      setActiveOrder(newOrder);
       setBasket({});
-      setOrderStatus('success');
-      setTimeout(() => {
-        setOrderStatus('idle');
-        setSelectedResto(null);
-      }, 3000);
+      setOrderStatus('tracking');
     } catch (err) {
       console.error(err);
       setOrderStatus('idle');
@@ -84,6 +105,79 @@ export default function ClientStore() {
 
   // Group items by category
   const categories = Array.from(new Set(menuItems.map(item => item.category || 'Gourmet')));
+
+  if (orderStatus === 'tracking' && activeOrder) {
+    const steps = [
+      { id: 'pending', label: 'Commande Reçue', icon: Clock },
+      { id: 'accepted', label: 'Confirmé', icon: CheckCircle2 },
+      { id: 'preparing', label: 'En Cuisine', icon: Utensils },
+      { id: 'ready', label: 'Prêt pour retrait', icon: ShoppingBag },
+      { id: 'picked_up', label: 'En cours de livraison', icon: MapPin },
+      { id: 'delivered', label: 'Livré', icon: CheckCircle2 },
+    ];
+
+    const currentStepIndex = steps.findIndex(s => s.id === activeOrder.status);
+
+    return (
+      <div className="min-h-screen bg-[#08090a] flex items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="glass w-full max-w-2xl p-8 md:p-12 rounded-[2.5rem] border-white/10 relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 p-8 opacity-10">
+             <ShoppingBag className="w-32 h-32 text-[#ff385c]" />
+          </div>
+
+          <div className="text-center mb-12">
+            <p className="text-[10px] font-black text-[#ff385c] tracking-[0.4em] uppercase mb-4">Live Tracking</p>
+            <h1 className="text-3xl md:text-5xl font-black italic tracking-tighter uppercase mb-2">SUIVI COMMANDE</h1>
+            <p className="text-white/40 text-xs font-bold">#{activeOrder.id.slice(-6).toUpperCase()} • {activeOrder.restaurantName}</p>
+          </div>
+
+          <div className="relative space-y-8 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-0.5 before:bg-white/5">
+            {steps.map((step, idx) => {
+              const isCompleted = idx < currentStepIndex;
+              const isCurrent = idx === currentStepIndex;
+
+              return (
+                <div key={step.id} className="flex items-center gap-6 relative z-10">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${
+                    isCompleted ? 'bg-[#ff385c] border-[#ff385c] text-white' :
+                    isCurrent ? 'bg-[#08090a] border-[#ff385c] text-[#ff385c] animate-pulse' :
+                    'bg-[#08090a] border-white/10 text-white/20'
+                  }`}>
+                    <step.icon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className={`font-black italic text-sm md:text-base uppercase tracking-tight transition-colors ${isCurrent ? 'text-white' : isCompleted ? 'text-white/60' : 'text-white/20'}`}>
+                      {step.label}
+                    </p>
+                    {isCurrent && <p className="text-[10px] font-bold text-[#ff385c] uppercase tracking-widest mt-1">Action en cours...</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-12 pt-12 border-t border-white/5 flex flex-col md:flex-row gap-6 items-center justify-between">
+            <div>
+              <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-1">Total Payé</p>
+              <p className="text-2xl font-black italic">{activeOrder.total?.toFixed(2)}€</p>
+            </div>
+            {activeOrder.status === 'delivered' && (
+              <button
+                onClick={() => { setOrderStatus('idle'); setActiveOrder(null); setSelectedResto(null); }}
+                className="w-full md:w-auto px-10 py-4 bg-white text-black font-black italic rounded-2xl hover:scale-105 transition-all"
+              >
+                RETOUR À L'ACCUEIL
+              </button>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (selectedResto) {
     return (
@@ -172,7 +266,7 @@ export default function ClientStore() {
               </h3>
               
               <div className="space-y-6 mb-8 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
-                {basketArray.map((item) => (
+                {basketArray.map((item: any) => (
                   <div key={item.id} className="flex justify-between items-start">
                     <div>
                       <p className="font-bold text-sm tracking-tight">{item.name}</p>
@@ -240,6 +334,15 @@ export default function ClientStore() {
     'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&q=80&w=600'
   ];
 
+  const filteredRestaurants = restaurants.filter(resto => {
+    const matchesSearch = resto.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (resto.category && resto.category.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCategory = selectedCategory === 'Tous' || resto.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const categoriesList = ['Tous', 'Burger & Grill', 'Sushi & Asia', 'Pizza & Pasta', 'Health & Salads'];
+
   return (
     <div className="min-h-screen bg-[#08090a]">
       {/* Header */}
@@ -253,12 +356,24 @@ export default function ClientStore() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
             <input 
               type="text"
-              placeholder="Rechercher..."
+              placeholder="Rechercher un restaurant ou un plat..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full h-10 md:h-12 bg-white/5 border border-white/10 rounded-full pl-10 md:pl-12 pr-4 text-sm focus:border-[#ff385c] outline-none transition-colors placeholder:text-white/10"
             />
           </div>
 
           <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
+            <button
+              onClick={() => {
+                const newLoc = prompt('Votre adresse ?', location);
+                if (newLoc) setLocation(newLoc);
+              }}
+              className="hidden lg:flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-colors"
+            >
+              <MapPin className="w-4 h-4 text-[#ff385c]" />
+              <span className="text-xs font-bold truncate max-w-[150px]">{location}</span>
+            </button>
             <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full">
               <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
               <span className="text-[8px] font-black text-green-500 uppercase tracking-widest">Kernel Online</span>
@@ -272,7 +387,7 @@ export default function ClientStore() {
               className="relative p-2 md:p-3 bg-white/5 border border-white/10 rounded-xl md:rounded-2xl hover:bg-white/10 transition-colors"
             >
               <ShoppingBag className="w-5 h-5" />
-              {basket.length > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#ff385c] text-[8px] font-black flex items-center justify-center rounded-full border-2 border-[#08090a]">{basket.length}</span>}
+              {Object.keys(basket).length > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#ff385c] text-[8px] font-black flex items-center justify-center rounded-full border-2 border-[#08090a]">{Object.keys(basket).length}</span>}
             </button>
             <button 
               className="p-2 md:p-3 bg-white/5 border border-white/10 rounded-xl md:rounded-2xl hover:bg-white/10 transition-colors"
@@ -290,14 +405,33 @@ export default function ClientStore() {
         </div>
       </header>
 
+      {/* Categories Horizontal Scroll */}
+      <section className="container mx-auto px-6 pt-12">
+        <div className="flex items-center gap-3 overflow-x-auto pb-4 scrollbar-hide">
+          {categoriesList.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-6 py-3 rounded-full text-xs font-black uppercase tracking-widest whitespace-nowrap transition-all border ${
+                selectedCategory === cat
+                  ? 'bg-[#ff385c] border-[#ff385c] text-white shadow-lg shadow-[#ff385c]/20'
+                  : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </section>
+
       {/* Grid */}
       <section className="container mx-auto px-6 py-12 pb-32">
         <div className="flex items-center justify-between mb-12">
-          <h2 className="text-3xl md:text-4xl font-black italic tracking-tighter">DÉCOUVRIR LE MEILLEUR<br/><span className="text-white/20 uppercase">AUTOUR DE VOUS</span></h2>
+          <h2 className="text-3xl md:text-4xl font-black italic tracking-tighter">DÉCOUVRIR LE MEILLEUR<br/><span className="text-white/20 uppercase">À {location.split(',')[0].toUpperCase()}</span></h2>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
-          {restaurants.map((shop) => (
+          {filteredRestaurants.map((shop) => (
             <motion.div 
               key={shop.id}
               whileHover={{ y: -8 }}

@@ -62,7 +62,7 @@ export default function App() {
           </ProtectedRoute>
         );
 
-      // Local development fallback
+      // Local development fallback & AIS previews
       case 'localhost':
       case '127.0.0.1':
         return (
@@ -78,8 +78,13 @@ export default function App() {
         );
 
       default:
-        // Handle AIS preview URLs or unknown domains
-        if (hostname.includes('run.app') || hostname.includes('webcontainer.io')) {
+        // Strictly block unknown production domains
+        if (hostname.endsWith('.letsgofood.fr')) {
+           return <UnauthorizedDomain />;
+        }
+
+        // AIS Previews (only allowed if not a .fr domain)
+        if (hostname.includes('run.app') || hostname.includes('webcontainer.io') || hostname.includes('bolt.new') || hostname.includes('stackblitz.io')) {
           return (
             <Routes>
               <Route path="/" element={<LandingPage />} />

@@ -1,102 +1,60 @@
-# LetsGoFood :: Architectural Audit & Convergence Report
-**Date**: 2026-05-10
-**Author**: Senior Cloud Architect
-**Status**: VALIDATED & LOCKED
+# RAPPORT D'AUDIT TECHNIQUE - LETSGOFOOD
 
----
+**Date** : 2024-05-22
+**Statut** : Audit Complet Réalisé
+**Projet** : LetsGoFood (SaaS Multi-tenant)
 
-## 1. ARCHITECTURE FINALE VALIDÉE
+## 1. ANALYSE DE L'ARCHITECTURE
 
-L'architecture convergée est désormais **100% Cloud-Native**, centrée sur Vercel pour le routing frontend et une API centralisée pour la logique métier. La dépendance Railway a été totalement éliminée de la chaîne de production.
+L'architecture actuelle repose sur une application React unique avec un routage basé sur le `hostname`.
+- **Forces** : Isolation logique simple, code partagé, déploiement unique.
+- **Faiblesses** : Le `switch(window.location.hostname)` actuel est mélangé avec des conditions `includes`, ce qui fragilise la sécurité de l'isolation.
 
-### Architecture Système Logic (Flow)
-1. **Edge Entry**: Vercel Edge Network (DNS OVH -> Vercel NS).
-2. **Domain Dispatcher**: `src/App.tsx` effectue un switch strict sur le `hostname` pour isoler les scopes applicatifs.
-3. **Core API**: Point d'accès unique `/api/*` gérant l'auth multi-rôles (RBAC).
-4. **Event Store**: Chaque action métier (Order/Lead) est persistée en base (MongoDB Atlas) et diffusée en temps réel via l'Event Bus.
+## 2. ÉTAT DES LIEUX (CHECKLIST)
 
----
+### ✅ Ce qui fonctionne
+- Build Vite (après installation des dépendances).
+- Structure de base des composants (Landing, Login, Portails).
+- Connexion Firebase (Config présente).
+- Styles Tailwind CSS 4.0.
+- Dashboard Admin (UI très propre).
 
-## 2. DIAGRAMME SYSTÈME (VUE ARCHITECTE)
+### ❌ Ce qui ne fonctionne pas
+- **Erreur Runtime Critique** : Dans `ClientStore.tsx`, `basket.length` est appelé sur un objet, provoquant un crash au clic ou à l'affichage du badge.
+- **Authentification Dev** : La fonction `loginAsEmail` n'est pas passée dans le Provider de `AuthContext.tsx`, rendant le bouton "GO" inopérant.
+- **Routage Strict** : Le routage dans `App.tsx` n'est pas encore assez rigoureux (présence de `includes` pour les domaines de preview).
+- **Suivi de Commande** : Manque une interface de suivi en temps réel côté client.
 
-```mermaid
-graph LR
-    subgraph Frontend_Ecosystem [Vercel Edge]
-        DNS[DVH DNS / Vercel NS]
-        Dispatcher{Domain Dispatcher}
-        
-        App[app.letsgofood.fr]
-        Merchant[merchant.letsgofood.fr]
-        Driver[driver.letsgofood.fr]
-        SaaS[saas.letsgofood.fr]
-    end
+### ⚠️ Ce qui est partiellement fonctionnel
+- **Merchant Portal** : Les graphiques utilisent des données statiques. La gestion du menu est basique.
+- **Driver App** : Le filtrage des commandes est rudimentaire.
+- **Responsive** : Globalement bon mais quelques débordements sur les tableaux admin en mobile.
 
-    subgraph Backend_Kernel [Centralized API]
-        API[api.letsgofood.fr]
-        Auth[JWT / RBAC Service]
-        Events[Event Manager / Socket.io]
-    end
+### 🚨 Bloquants pour la Production
+1. Le crash `basket.length`.
+2. L'absence de validation stricte du domaine (Risque de "leak" entre apps).
+3. Le bypass d'auth dev qui doit être sécurisé ou désactivé en prod.
 
-    subgraph Persistence [State Layer]
-        DB[(MongoDB Atlas)]
-        Audit[(Event Store / Audit Log)]
-    end
+## 3. COMPOSANTS ET PAGES MANQUANTES
 
-    DNS --> Dispatcher
-    Dispatcher --> App & Merchant & Driver & SaaS
-    App & Merchant & Driver & SaaS --> API
-    API --> Auth
-    API --> Events
-    API --> DB & Audit
-    Events -.-> SaaS
-```
+- **ClientApp** :
+  - Page de suivi de commande détaillée.
+  - Historique des commandes.
+  - Sélection de géolocalisation réelle (actuellement simulée).
+- **Merchant** :
+  - Gestion des horaires d'ouverture.
+  - Rapports de ventes exportables.
+- **Driver** :
+  - Navigation (Lien vers Google Maps).
 
----
+## 4. ANALYSE VERCEL
 
-## 3. LISTE DES COMPOSANTS CRITIQUES
+- `vercel.json` est présent avec un rewrite global vers `/`. C'est correct pour une SPA.
+- Attention aux domaines : Vercel doit être configuré pour accepter les wildcards ou chaque sous-domaine doit être ajouté manuellement.
 
-| Composant | Rôle | Technologie |
-| :--- | :--- | :--- |
-| **DomainDispatcher** | Isolation stricte des sous-domaines | TypeScript / React / useMemo |
-| **RBAC Gateway** | Sécurisation des accès par rôle | JWT / Middleware Node.js |
-| **Order Lifecycle** | Gestion immuable des états de commande | MongoDB Transactional logic |
-| **SaaS Control Tower** | Monitoring temps réel système | React / Socket.io stream-only |
-| **Audit Engine** | Traçabilité E2E (Correlation tracking) | MongoDB / X-Correlation-ID |
+## 5. RECOMMANDATIONS IMMÉDIATES
 
----
-
-## 4. POINTS DE RISQUE SUPPRIMÉS (DEBT CLEANUP)
-
-- [x] **Split-Brain Risk**: Suppression de la double infrastructure Railway/Vercel. Vercel est désormais l'unique source de vérité.
-- [x] **Hostname Ambiguity**: Remplacement de `startsWith()` par un `switch` strict (Exact Match) dans le routing.
-- [x] **Routing Leak**: Aucun fallback implicite vers la Landing Page sur les domaines applicatifs.
-- [x] **Auth Bypass**: Validation centralisée des tokens JWT en backend uniquement.
-- [x] **Subdomain Sync**: Correction de l'incohérence entre les CNAME OVH (English) et les domaines Vercel (French: marchand/chauffeur).
-- [x] **Indexing Shield**: Ajout de tags SEO agressifs et titres dynamiques pour forcer l'indexation de `app.letsgofood.fr` par Google.
-- [x] **SPA Routing**: Injection de `vercel.json` pour garantir le fonctionnement du routing React à 100% sur Vercel.
-
----
-
-## 5. DIAGNOSTIC "DÉFAUT D'INDEXATION"
-
-Si `app.letsgofood.fr` n'apparaît pas dans les recherches Google (quasi nulle part), voici les causes et solutions techniques appliquées :
-
-1. **Propagation DNS** (Action Requise OVH) : Tant que l'Apex n'est pas sur `76.76.21.21`, Googlebot peut être confus par les redirections.
-2. **Dynamic Meta Data** (Côté Code) : Nous avons ajouté un `useEffect` pour changer le titre de la page dynamiquement. Avant, toutes les pages avaient le même titre, ce qui entraînait une dé-duplication par Google.
-3. **Robots Discovery** (Côté Code) : Le fichier `index.html` a été enrichi de mots-clés spécifiques ("Halal", "SaaS", "Marchand") pour l'index bot.
-4. **Sitemap** : Il est recommandé de soumettre une Sitemap incluant `app.letsgofood.fr` via la Google Search Console.
-
----
-
-## 6. SCORE DE COHÉRENCE ARCHITECTURALE
-
-### **98 / 100**
-
-**Justification :** 
-L'architecture est quasi-parfaite pour un SaaS de taille mondiale. Les 2 points restants concernent l'implémentation finale de Pusher/Ably pour remplacer les WebSockets natifs (actuellement en transition vers un mode Edge-ready).
-
----
-
-## 6. CONCLUSION
-
-**Railway a été officiellement éliminé de la production.** L'infrastructure LetsGoFood est désormais verrouillée sur une pile Vercel + MongoDB Atlas, garantissant une scalabilité infinie et une maintenance simplifiée.
+1. Corriger l'accès à `basket.length` par `Object.keys(basket).length`.
+2. Exposer `loginAsEmail` dans le contexte d'authentification.
+3. Durcir le `switch` dans `App.tsx`.
+4. Implémenter une vue `OrderTracking` dynamique.
