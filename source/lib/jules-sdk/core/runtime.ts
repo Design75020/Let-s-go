@@ -8,11 +8,16 @@ export interface JulesEvent {
   timestamp: string;
 }
 
+import { JulesPlan } from '../types';
+import { registry } from '../tools/registry';
+import { telemetry } from './telemetry';
+
 export class JulesRuntime {
   private readonly MAX_RETRIES = 3;
   private readonly TIMEOUT_MS = 30000;
 
   async handleEvent(event: JulesEvent, retryCount = 0): Promise<any> {
+    const span = telemetry.startSpan(`pipeline_${event.type}`, event.correlationId);
     console.log(`[JULES-RUNTIME] Pipeline started: ${event.type} [${event.correlationId}] (Attempt ${retryCount + 1})`);
 
     const timeoutPromise = new Promise((_, reject) =>
@@ -26,9 +31,12 @@ export class JulesRuntime {
       ]);
 
       console.log(`[JULES-RUNTIME] Pipeline success: ${event.correlationId}`);
+      telemetry.recordMetric('pipeline_success', 1, { eventType: event.type });
+      span.end();
       return result;
 
     } catch (error) {
+      telemetry.recordMetric('pipeline_error', 1, { eventType: event.type, error: (error as Error).message });
       console.error(`[JULES-RUNTIME] Pipeline error: ${event.correlationId}:`, error);
 
       if (retryCount < this.MAX_RETRIES && this.isRetryable(error)) {
@@ -78,14 +86,27 @@ export class JulesRuntime {
     return true;
   }
 
-  private async planExecution(event: JulesEvent, context: any) {
+  private async planExecution(event: JulesEvent, context: any): Promise<JulesPlan> {
     console.log(`[JULES-PLANNER] Generating DAG for ${event.type}`);
-    return { tasks: [] };
+    return {
+      id: crypto.randomUUID(),
+      correlationId: event.correlationId,
+      tasks: [],
+      status: 'draft'
+    };
   }
 
-  private async executePlan(plan: any) {
-    console.log(`[JULES-EXECUTOR] Running tool sequence`);
-    return { success: true };
+  private async executePlan(plan: JulesPlan) {
+    console.log(`[JULES-EXECUTOR] Running workflow DAG: ${plan.id}`);
+    const results: Record<string, any> = {};
+
+    for (const task of plan.tasks) {
+      const tool = registry.getTool(task.agent.toLowerCase());
+      if (tool) {
+        results[task.id] = await tool.update?.(task.payload.docPath, task.payload.data) || { executed: true };
+      }
+    }
+    return results;
   }
 
   private async updateMemory(event: JulesEvent, results: any) {

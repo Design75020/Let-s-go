@@ -42,10 +42,16 @@ export class JulesEventBroker {
     const correlationId = payload.correlationId || crypto.randomUUID();
     const version = payload.version || 'v1';
 
-    // Idempotency check
-    if (this.processedEvents.has(correlationId)) {
+    // Idempotency check (Persistent simulation)
+    const isProcessed = await this.checkPersistentIdempotency(correlationId);
+    if (isProcessed || this.processedEvents.has(correlationId)) {
       console.warn(`[EVENT-BROKER] Duplicate event detected and ignored: ${correlationId}`);
       return correlationId;
+    }
+
+    // Versioning Validation
+    if (!['v1', 'v2'].includes(version)) {
+      throw new Error(`[EVENT-BROKER] Unsupported event version: ${version}`);
     }
 
     console.log(`[EVENT-BROKER] [${correlationId}] [${version}] Publishing: ${payload.type}`);
@@ -85,6 +91,12 @@ export class JulesEventBroker {
     listeners.push(callback);
     this.consumers.set(type, listeners);
     console.log(`[EVENT-BROKER] New subscriber for: ${type}`);
+  }
+
+  private async checkPersistentIdempotency(correlationId: string): Promise<boolean> {
+    // In a real industrial system, this would query Redis or an Idempotency table in DynamoDB/SQL
+    console.log(`[EVENT-BROKER] Checking persistent idempotency for ${correlationId}`);
+    return false;
   }
 
   async replaySequence(correlationId: string) {
