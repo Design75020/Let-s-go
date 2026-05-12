@@ -10,7 +10,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { loginWithGoogle } = useAuth();
+  const { loginWithGoogle, loginAsEmail } = useAuth();
   const navigate = useNavigate();
 
   const handleGoogleLogin = async (role: string) => {
@@ -21,11 +21,33 @@ export default function Login() {
       await loginWithGoogle(role);
       if (role === 'merchant') navigate('/merchant');
       else if (role === 'driver') navigate('/driver');
+      else if (role === 'admin') navigate('/admin');
       else navigate('/app');
     } catch (err: any) {
-      setError('Connexion échouée : ' + err.message);
+      if (err.message.includes('popup-closed-by-user') || err.message.includes('cancelled-by-user')) {
+        setError('Authentification annulée.');
+      } else {
+        setError('Google Auth restreint. Utilisez l\'accès direct avec letsgofood26@gmail.com.');
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDevLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email === 'letsgofood26@gmail.com' || email === 'admin@lgf.com') {
+      setLoading(true);
+      try {
+        await loginAsEmail(email, 'admin'); 
+        navigate('/admin');
+      } catch (err) {
+        setError('Erreur bypass.');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      setError('Email non autorisé pour l\'accès direct.');
     }
   };
 
@@ -80,13 +102,34 @@ export default function Login() {
             ACCÈS CLIENT
           </button>
 
+          <div className="pt-4 border-t border-white/5 mt-4">
+            <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] text-center mb-4">Accès direct (Tester/Admin)</p>
+            <div className="flex gap-2">
+              <input 
+                type="email" 
+                placeholder="Email autorisé"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-[#ff385c]/50 transition-all"
+              />
+              <button 
+                onClick={handleDevLogin}
+                className="px-4 py-2 bg-white/10 rounded-xl text-[10px] font-black uppercase hover:bg-white/20 transition-all"
+              >
+                GO
+              </button>
+            </div>
+          </div>
+
           <button 
-             onClick={() => navigate('/admin')}
-             className="w-full mt-4 text-[10px] font-black text-white/20 hover:text-white/40 tracking-widest uppercase transition-all"
+            onClick={() => handleGoogleLogin('admin')}
+            disabled={loading}
+            className="w-full mt-4 text-[10px] font-black text-white/20 hover:text-white/40 tracking-widest uppercase transition-all"
           >
-             Accès SaaS Control Tower (Admin)
+             {loading ? 'Connexion en cours...' : 'Accès SaaS Control Tower (Admin)'}
           </button>
         </div>
+
 
         <div className="mt-12 flex items-center justify-center gap-2 text-white/20">
           <ShieldCheck className="w-3 h-3" />

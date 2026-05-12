@@ -81,10 +81,13 @@ export default function LandingPage() {
       <section className="py-20 md:py-32 container mx-auto px-6 md:px-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
           {features.map((f, i) => (
-            <div key={i} className="p-8 md:p-10 rounded-[2rem] md:rounded-[3rem] bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all">
-              <f.icon className="w-8 md:w-10 h-8 md:h-10 text-[#ff385c] mb-6" />
-              <h3 className="text-lg md:text-xl font-bold italic mb-4">{f.title}</h3>
-              <p className="text-white/40 text-xs md:text-sm leading-relaxed">{f.desc}</p>
+            <div key={i} className="p-8 md:p-10 rounded-[2rem] md:rounded-[3rem] bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#ff385c]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative z-10">
+                <f.icon className="w-8 md:w-10 h-8 md:h-10 text-[#ff385c] mb-6" />
+                <h3 className="text-lg md:text-xl font-bold italic mb-4">{f.title}</h3>
+                <p className="text-white/40 text-xs md:text-sm leading-relaxed">{f.desc}</p>
+              </div>
             </div>
           ))}
         </div>

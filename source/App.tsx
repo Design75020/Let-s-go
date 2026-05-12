@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import LandingPage from './components/LandingPage';
@@ -10,44 +10,96 @@ import DriverApp from './components/DriverApp';
 import ClientStore from './components/ClientStore';
 import AdminPortal from './components/AdminPortal';
 
+const UnauthorizedDomain = () => (
+  <div className="min-h-screen bg-[#08090a] text-white flex flex-col items-center justify-center p-6 text-center">
+    <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6">
+      <span className="text-4xl">🚫</span>
+    </div>
+    <h1 className="text-3xl font-black italic mb-2 tracking-tighter">ACCÈS NON AUTORISÉ</h1>
+    <p className="text-white/40 max-w-sm font-bold uppercase text-[10px] tracking-widest">
+      Ce domaine n'est pas reconnu par le LetsGoFood Kernel.
+      Veuillez utiliser un point d'accès officiel.
+    </p>
+  </div>
+);
+
 export default function App() {
+  const hostname = window.location.hostname;
+
+  const AppContent = useMemo(() => {
+    // Production & Staging mapping
+    switch (hostname) {
+      case 'letsgofood.fr':
+        return <LandingPage />;
+      
+      case 'app.letsgofood.fr':
+        return (
+          <ProtectedRoute>
+            <ClientStore />
+          </ProtectedRoute>
+        );
+
+      case 'merchant.letsgofood.fr':
+        return (
+          <ProtectedRoute>
+            <MerchantPortal />
+          </ProtectedRoute>
+        );
+
+      case 'driver.letsgofood.fr':
+        return (
+          <ProtectedRoute>
+            <DriverApp />
+          </ProtectedRoute>
+        );
+
+      case 'admin.letsgofood.fr':
+      case 'saas.letsgofood.fr':
+      case 'crm.letsgofood.fr':
+        return (
+          <ProtectedRoute>
+            <AdminPortal />
+          </ProtectedRoute>
+        );
+
+      // Local development fallback
+      case 'localhost':
+      case '127.0.0.1':
+        return (
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/app" element={<ProtectedRoute><ClientStore /></ProtectedRoute>} />
+            <Route path="/merchant/*" element={<ProtectedRoute><MerchantPortal /></ProtectedRoute>} />
+            <Route path="/driver/*" element={<ProtectedRoute><DriverApp /></ProtectedRoute>} />
+            <Route path="/admin/*" element={<ProtectedRoute><AdminPortal /></ProtectedRoute>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        );
+
+      default:
+        // Handle AIS preview URLs or unknown domains
+        if (hostname.includes('run.app') || hostname.includes('webcontainer.io')) {
+          return (
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/app" element={<ProtectedRoute><ClientStore /></ProtectedRoute>} />
+              <Route path="/merchant/*" element={<ProtectedRoute><MerchantPortal /></ProtectedRoute>} />
+              <Route path="/driver/*" element={<ProtectedRoute><DriverApp /></ProtectedRoute>} />
+              <Route path="/admin/*" element={<ProtectedRoute><AdminPortal /></ProtectedRoute>} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          );
+        }
+        return <UnauthorizedDomain />;
+    }
+  }, [hostname]);
+
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<Login />} />
-          
-          {/* Marketplace / Client */}
-          <Route path="/app" element={
-            <ProtectedRoute>
-              <ClientStore />
-            </ProtectedRoute>
-          } />
-          
-          {/* Merchant Portal */}
-          <Route path="/merchant/*" element={
-            <ProtectedRoute>
-              <MerchantPortal />
-            </ProtectedRoute>
-          } />
-          
-          {/* Driver App */}
-          <Route path="/driver/*" element={
-            <ProtectedRoute>
-              <DriverApp />
-            </ProtectedRoute>
-          } />
-
-          {/* Admin / SaaS Control Tower */}
-          <Route path="/admin/*" element={
-            <ProtectedRoute>
-              <AdminPortal />
-            </ProtectedRoute>
-          } />
-
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        {AppContent}
       </BrowserRouter>
     </AuthProvider>
   );
