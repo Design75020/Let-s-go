@@ -1,20 +1,16 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# letsgofood-platform
 
-# Run and deploy your AI Studio app
+Plateforme multi-tenant de livraison food premium. 
+Ecosystème complet incluant :
+- Acquisition (Marketing)
+- Plateforme Client (Live)
+- Merchant Interface (B2B)
+- Driver Dispatch (Logistics)
+- SaaS Control Tower (Infrastructure)
+- CRM & Sales
 
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/d9a3c50d-2ac9-4bf2-a95c-2b37e1689aef
-
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Stack Technique
+- Frontend: React + Vite + Tailwind CSS + Framer Motion
+- Backend: Node.js (Express) + MongoDB (Mongoose)
+- Real-time: Socket.io
+- Cartographie: Google Maps Platform

@@ -1,0 +1,76 @@
+{
+  "entities": {
+    "user": {
+      "title": "User Profile",
+      "description": "Public and private user data",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["client", "merchant", "driver", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "role"]
+    },
+    "restaurant": {
+      "title": "Restaurant",
+      "description": "Restaurant registration and status",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "status": { "type": "string", "enum": ["open", "closed"] },
+        "category": { "type": "string" },
+        "rating": { "type": "number" }
+      },
+      "required": ["name", "ownerId", "status"]
+    },
+    "menuItem": {
+      "title": "Menu Item",
+      "description": "Products offered by a restaurant",
+      "type": "object",
+      "properties": {
+        "restaurantId": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "available": { "type": "boolean" }
+      },
+      "required": ["restaurantId", "name", "price"]
+    },
+    "order": {
+      "title": "Order",
+      "description": "Delivery order tracking",
+      "type": "object",
+      "properties": {
+        "clientId": { "type": "string" },
+        "restaurantId": { "type": "string" },
+        "driverId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "preparing", "picked_up", "delivered", "cancelled"] },
+        "items": { "type": "array" },
+        "total": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["clientId", "restaurantId", "status", "items", "total"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "User profiles"
+    },
+    "/restaurants/{restaurantId}": {
+      "schema": "restaurant",
+      "description": "Restaurant details"
+    },
+    "/restaurants/{restaurantId}/menuItems/{itemId}": {
+      "schema": "menuItem",
+      "description": "Items for a specific restaurant"
+    },
+    "/orders/{orderId}": {
+      "schema": "order",
+      "description": "Global orders collection"
+    }
+  }
+}

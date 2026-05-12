@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // DENY ALL BY DEFAULT
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // HELPERS
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // USERS
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(userId) && 
+        incoming().keys().hasAll(['name', 'email', 'role']) &&
+        incoming().role in ['client', 'merchant', 'driver'];
+      allow update: if isSignedIn() && isOwner(userId) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['name']);
+    }
+
+    // RESTAURANTS
+    match /restaurants/{restaurantId} {
+      allow read: if true;
+      allow create: if isSignedIn() && 
+        incoming().ownerId == request.auth.uid &&
+        incoming().keys().hasAll(['name', 'ownerId', 'status']);
+      allow update: if isSignedIn() && 
+        existing().ownerId == request.auth.uid &&
+        incoming().diff(existing()).affectedKeys().hasAny(['status', 'name', 'category']);
+    }
+
+    // MENU ITEMS
+    match /restaurants/{restaurantId}/menuItems/{itemId} {
+      allow read: if true;
+      allow write: if isSignedIn() && 
+        get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.ownerId == request.auth.uid;
+    }
+
+    // ORDERS
+    match /orders/{orderId} {
+      allow get: if isSignedIn() && (
+        resource.data.clientId == request.auth.uid || 
+        resource.data.driverId == request.auth.uid ||
+        get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid
+      );
+      allow list: if isSignedIn(); // Queries must filter by client/driver/restaurant
+      allow create: if isSignedIn() && incoming().clientId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'driverId']) && incoming().status == 'accepted') || // Driver taking order
+        (existing().driverId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status'])) || // Driver updating status
+        (get(/databases/$(database)/documents/restaurants/$(existing().restaurantId)).data.ownerId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status'])) // Merchant updating status
+      );
+    }
+  }
+}
