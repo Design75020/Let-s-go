@@ -26,6 +26,15 @@ export class JulesTelemetry {
   recordMetric(name: string, value: number, labels: Record<string, string> = {}) {
     console.log(`[TELEMETRY] [METRIC] ${name}: ${value} | labels: ${JSON.stringify(labels)}`);
   }
+
+  recordSLI(name: string, value: number, target: number) {
+    const isWithinTarget = value <= target;
+    console.log(`[TELEMETRY] [SLI] ${name}: ${value} | target: ${target} | status: ${isWithinTarget ? 'OK' : 'FAIL'}`);
+  }
+
+  trackUptime(serviceName: string, status: 'UP' | 'DOWN') {
+    console.log(`[TELEMETRY] [UPTIME] service: ${serviceName} | status: ${status}`);
+  }
 }
 
 export const telemetry = JulesTelemetry.getInstance();

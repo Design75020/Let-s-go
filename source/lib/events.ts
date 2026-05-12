@@ -24,12 +24,34 @@ export interface EventPayload {
   version?: string;
 }
 
-export class JulesEventBroker {
-  private static instance: JulesEventBroker;
-  private consumers: Map<string, ((payload: EventPayload) => Promise<void>)[]> = new Map();
-  private processedEvents: Set<string> = new Set(); // Idempotency cache (Memory-based for MVP)
+export interface IEventBroker {
+  publish(payload: EventPayload): Promise<string>;
+  subscribe(type: BusinessEvent, callback: (payload: EventPayload) => Promise<void>): void;
+  replaySequence(correlationId: string): Promise<void>;
+}
 
-  private constructor() {}
+export abstract class BaseEventBroker implements IEventBroker {
+  protected consumers: Map<string, ((payload: EventPayload) => Promise<void>)[]> = new Map();
+  protected processedEvents: Set<string> = new Set();
+
+  abstract publish(payload: EventPayload): Promise<string>;
+
+  subscribe(type: BusinessEvent, callback: (payload: EventPayload) => Promise<void>) {
+    const listeners = this.consumers.get(type) || [];
+    listeners.push(callback);
+    this.consumers.set(type, listeners);
+    console.log(`[EVENT-BROKER] New subscriber for: ${type}`);
+  }
+
+  abstract replaySequence(correlationId: string): Promise<void>;
+}
+
+export class JulesEventBroker extends BaseEventBroker {
+  private static instance: JulesEventBroker;
+
+  private constructor() {
+    super();
+  }
 
   public static getInstance(): JulesEventBroker {
     if (!JulesEventBroker.instance) {
@@ -42,14 +64,12 @@ export class JulesEventBroker {
     const correlationId = payload.correlationId || crypto.randomUUID();
     const version = payload.version || 'v1';
 
-    // Idempotency check (Persistent simulation)
     const isProcessed = await this.checkPersistentIdempotency(correlationId);
     if (isProcessed || this.processedEvents.has(correlationId)) {
       console.warn(`[EVENT-BROKER] Duplicate event detected and ignored: ${correlationId}`);
       return correlationId;
     }
 
-    // Versioning Validation
     if (!['v1', 'v2'].includes(version)) {
       throw new Error(`[EVENT-BROKER] Unsupported event version: ${version}`);
     }
@@ -57,7 +77,6 @@ export class JulesEventBroker {
     console.log(`[EVENT-BROKER] [${correlationId}] [${version}] Publishing: ${payload.type}`);
 
     try {
-      // 1. Persist to Event Store (Audit Log)
       const eventDoc = {
         ...payload,
         correlationId,
@@ -67,11 +86,9 @@ export class JulesEventBroker {
       };
       await addDoc(collection(db, 'audit_logs'), eventDoc);
 
-      // 2. Dispatch to internal consumers
       const listeners = this.consumers.get(payload.type) || [];
       await Promise.all(listeners.map(cb => cb(payload)));
 
-      // 3. Mark as processed for idempotency
       this.processedEvents.add(correlationId);
 
     } catch (error) {
@@ -86,15 +103,7 @@ export class JulesEventBroker {
     return correlationId;
   }
 
-  subscribe(type: BusinessEvent, callback: (payload: EventPayload) => Promise<void>) {
-    const listeners = this.consumers.get(type) || [];
-    listeners.push(callback);
-    this.consumers.set(type, listeners);
-    console.log(`[EVENT-BROKER] New subscriber for: ${type}`);
-  }
-
   private async checkPersistentIdempotency(correlationId: string): Promise<boolean> {
-    // In a real industrial system, this would query Redis or an Idempotency table in DynamoDB/SQL
     console.log(`[EVENT-BROKER] Checking persistent idempotency for ${correlationId}`);
     return false;
   }
@@ -103,11 +112,8 @@ export class JulesEventBroker {
     console.log(`[EVENT-BROKER] Replaying sequence for ${correlationId}`);
     const q = query(collection(db, 'audit_logs'), where('correlationId', '==', correlationId));
     const snapshot = await getDocs(q);
-    // Re-processing logic...
   }
 }
 
 export const broker = JulesEventBroker.getInstance();
-
-// Legacy wrapper for compatibility
 export const emitEvent = (payload: EventPayload) => broker.publish(payload);
