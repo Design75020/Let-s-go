@@ -42,6 +42,13 @@ service cloud.firestore {
         get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.ownerId == request.auth.uid;
     }
 
+    // AUDIT LOGS (Immutable)
+    match /audit_logs/{logId} {
+      allow read: if isSignedIn() && request.auth.token.role == 'admin';
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
     // ORDERS
     match /orders/{orderId} {
       allow get: if isSignedIn() && (
