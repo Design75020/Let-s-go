@@ -6,6 +6,24 @@ import { Sparkles, ArrowRight, ShieldCheck, Zap, Globe, BarChart3 } from 'lucide
 export default function LandingPage() {
   const navigate = useNavigate();
 
+  const handleNavigation = (path: string) => {
+    const hostname = window.location.hostname;
+
+    // In production, we must use absolute URLs for cross-subdomain navigation
+    if (hostname.endsWith('.letsgofood.fr') || hostname === 'letsgofood.fr') {
+      const baseDomain = 'letsgofood.fr';
+      if (path === '/login') window.location.href = `https://app.${baseDomain}/login`;
+      else if (path === '/app') window.location.href = `https://app.${baseDomain}`;
+      else if (path === '/merchant') window.location.href = `https://merchant.${baseDomain}`;
+      else if (path === '/driver') window.location.href = `https://driver.${baseDomain}`;
+      else if (path === '/admin') window.location.href = `https://admin.${baseDomain}`;
+      else window.location.href = `https://${baseDomain}${path}`;
+    } else {
+      // For localhost and other environments, use internal navigation
+      navigate(path);
+    }
+  };
+
   const features = [
     { icon: Globe, title: 'Plateforme Live', desc: 'Marketplace temps réel pour les clients.' },
     { icon: Zap, title: 'Écosystème Unifié', desc: 'Une seule base de données pour tous les acteurs.' },
@@ -22,8 +40,8 @@ export default function LandingPage() {
             LETSGOFOOD<span className="text-[#ff385c]">.</span>
           </div>
           <div className="flex items-center gap-4 md:gap-8">
-            <button onClick={() => navigate('/login')} className="hidden sm:block text-[10px] md:text-xs font-black tracking-widest uppercase hover:text-[#ff385c] transition-colors">Connexion</button>
-            <button onClick={() => navigate('/login')} className="px-5 md:px-8 py-2.5 md:py-3 bg-white text-black font-black italic rounded-full text-[10px] md:text-xs hover:scale-105 transition-all">REJOINDRE</button>
+            <button onClick={() => handleNavigation('/login')} className="hidden sm:block text-[10px] md:text-xs font-black tracking-widest uppercase hover:text-[#ff385c] transition-colors">Connexion</button>
+            <button onClick={() => handleNavigation('/login')} className="px-5 md:px-8 py-2.5 md:py-3 bg-white text-black font-black italic rounded-full text-[10px] md:text-xs hover:scale-105 transition-all">REJOINDRE</button>
           </div>
         </div>
       </nav>
@@ -67,10 +85,10 @@ export default function LandingPage() {
             transition={{ delay: 0.3 }}
             className="flex flex-col sm:flex-row justify-center gap-4 md:gap-6"
           >
-            <button onClick={() => navigate('/app')} className="group px-8 md:px-10 py-4 md:py-5 bg-[#ff385c] text-white font-black italic rounded-2xl flex items-center justify-center gap-3 hover:scale-105 transition-all shadow-2xl shadow-[#ff385c]/30">
+            <button onClick={() => handleNavigation('/app')} className="group px-8 md:px-10 py-4 md:py-5 bg-[#ff385c] text-white font-black italic rounded-2xl flex items-center justify-center gap-3 hover:scale-105 transition-all shadow-2xl shadow-[#ff385c]/30">
               EXPLORER LE LIVE <ArrowRight className="group-hover:translate-x-1 transition-transform" />
             </button>
-            <button onClick={() => navigate('/login')} className="px-8 md:px-10 py-4 md:py-5 bg-white/5 border border-white/10 text-white font-black italic rounded-2xl hover:bg-white/10 transition-all">
+            <button onClick={() => handleNavigation('/login')} className="px-8 md:px-10 py-4 md:py-5 bg-white/5 border border-white/10 text-white font-black italic rounded-2xl hover:bg-white/10 transition-all">
               INTERFACE MERCHANT
             </button>
           </motion.div>
@@ -99,9 +117,9 @@ export default function LandingPage() {
           <div>
             <h4 className="text-xl md:text-2xl font-black italic mb-6 md:mb-8">ACCÈS DIRECTS</h4>
             <div className="space-y-4">
-              <button onClick={() => navigate('/merchant')} className="block text-white/40 hover:text-[#ff385c] font-bold text-sm">Portail Restaurateur</button>
-              <button onClick={() => navigate('/driver')} className="block text-white/40 hover:text-[#ff385c] font-bold text-sm">Driver App</button>
-              <button onClick={() => navigate('/admin')} className="block text-white/40 hover:text-[#ff385c] font-bold text-sm">SaaS Control Tower (Admin)</button>
+              <button onClick={() => handleNavigation('/merchant')} className="block text-white/40 hover:text-[#ff385c] font-bold text-sm">Portail Restaurateur</button>
+              <button onClick={() => handleNavigation('/driver')} className="block text-white/40 hover:text-[#ff385c] font-bold text-sm">Driver App</button>
+              <button onClick={() => handleNavigation('/admin')} className="block text-white/40 hover:text-[#ff385c] font-bold text-sm">SaaS Control Tower (Admin)</button>
             </div>
           </div>
           <div className="md:col-span-2 text-left md:text-right">

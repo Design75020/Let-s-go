@@ -1,5 +1,5 @@
 
-import React, { useMemo, Suspense, Component, ErrorInfo, ReactNode } from 'react';
+import React, { useMemo, Suspense, ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import LandingPage from './components/LandingPage';
@@ -18,16 +18,18 @@ const AppContainer = ({ children }: { children: React.ReactNode }) => (
   </Routes>
 );
 
-const UnauthorizedDomain = () => (
+const UnauthorizedDomain = ({ hostname }: { hostname: string }) => (
   <div className="min-h-screen bg-[#08090a] text-white flex flex-col items-center justify-center p-6 text-center">
     <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6">
       <span className="text-4xl">🚫</span>
     </div>
-    <h1 className="text-3xl font-black italic mb-2 tracking-tighter">ACCÈS NON AUTORISÉ</h1>
-    <p className="text-white/40 max-w-sm font-bold uppercase text-[10px] tracking-widest">
-      Ce domaine n'est pas reconnu par le LetsGoFood Kernel.
-      Veuillez utiliser un point d'accès officiel.
+    <h1 className="text-3xl font-black italic mb-2 tracking-tighter uppercase">Domaine non reconnu</h1>
+    <p className="text-white/40 max-w-sm font-bold uppercase text-[10px] tracking-widest mb-8">
+      Le domaine <span className="text-[#ff385c]">{hostname}</span> n'est pas configuré dans le LetsGoFood Kernel.
     </p>
+    <a href="https://letsgofood.fr" className="px-8 py-3 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">
+      Retour au portail officiel
+    </a>
   </div>
 );
 
@@ -59,48 +61,73 @@ const ErrorBoundary = ({ children }: { children: ReactNode }) => {
   return <>{children}</>;
 };
 
+/**
+ * Robust Hostname Normalizer for Multi-Tenant Routing
+ */
+function getAppType(hostname: string): string {
+  // 1. Remove 'www.' prefix
+  let host = hostname.toLowerCase().replace(/^www\./, '');
+
+  // 2. Localhost & Dev tools
+  if (host === 'localhost' || host === '127.0.0.1' || host.includes('webcontainer.io') || host.includes('stackblitz.io') || host.includes('bolt.new')) {
+    return 'development';
+  }
+
+  // 3. Vercel Previews
+  if (host.includes('vercel.app')) {
+    return 'development';
+  }
+
+  // 4. Production Subdomains
+  if (host === 'letsgofood.fr') return 'landing';
+  if (host === 'app.letsgofood.fr') return 'client';
+  if (host === 'merchant.letsgofood.fr') return 'merchant';
+  if (host === 'driver.letsgofood.fr') return 'driver';
+  if (host === 'admin.letsgofood.fr' || host === 'saas.letsgofood.fr' || host === 'crm.letsgofood.fr') return 'admin';
+
+  return 'unauthorized';
+}
+
 export default function App() {
   const hostname = window.location.hostname;
+  const appType = useMemo(() => getAppType(hostname), [hostname]);
 
   const AppContent = useMemo(() => {
-    // Production & Staging mapping
-    switch (hostname) {
-      case 'letsgofood.fr':
+    console.log(`[ROUTING] Detected Hostname: ${hostname} | App Type: ${appType}`);
+
+    switch (appType) {
+      case 'landing':
         return <LandingPage />;
       
-      case 'app.letsgofood.fr':
+      case 'client':
         return (
           <AppContainer>
             <ProtectedRoute><ClientStore /></ProtectedRoute>
           </AppContainer>
         );
 
-      case 'merchant.letsgofood.fr':
+      case 'merchant':
         return (
           <AppContainer>
             <ProtectedRoute><MerchantPortal /></ProtectedRoute>
           </AppContainer>
         );
 
-      case 'driver.letsgofood.fr':
+      case 'driver':
         return (
           <AppContainer>
             <ProtectedRoute><DriverApp /></ProtectedRoute>
           </AppContainer>
         );
 
-      case 'admin.letsgofood.fr':
-      case 'saas.letsgofood.fr':
-      case 'crm.letsgofood.fr':
+      case 'admin':
         return (
           <AppContainer>
             <ProtectedRoute><AdminPortal /></ProtectedRoute>
           </AppContainer>
         );
 
-      // Local development fallback & AIS previews
-      case 'localhost':
-      case '127.0.0.1':
+      case 'development':
         return (
           <Routes>
             <Route path="/" element={<LandingPage />} />
@@ -114,28 +141,9 @@ export default function App() {
         );
 
       default:
-        // Strictly block unknown production domains
-        if (hostname.endsWith('.letsgofood.fr')) {
-           return <UnauthorizedDomain />;
-        }
-
-        // AIS Previews (only allowed if not a .fr domain)
-        if (hostname.includes('run.app') || hostname.includes('webcontainer.io') || hostname.includes('bolt.new') || hostname.includes('stackblitz.io')) {
-          return (
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/app" element={<ProtectedRoute><ClientStore /></ProtectedRoute>} />
-              <Route path="/merchant/*" element={<ProtectedRoute><MerchantPortal /></ProtectedRoute>} />
-              <Route path="/driver/*" element={<ProtectedRoute><DriverApp /></ProtectedRoute>} />
-              <Route path="/admin/*" element={<ProtectedRoute><AdminPortal /></ProtectedRoute>} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          );
-        }
-        return <UnauthorizedDomain />;
+        return <UnauthorizedDomain hostname={hostname} />;
     }
-  }, [hostname]);
+  }, [appType, hostname]);
 
   return (
     <ErrorBoundary>

@@ -13,16 +13,31 @@ export default function Login() {
   const { loginWithGoogle, loginAsEmail } = useAuth();
   const navigate = useNavigate();
 
+  const handleSubdomainRedirect = (role: string) => {
+    const hostname = window.location.hostname;
+    const isProd = hostname.endsWith('.letsgofood.fr') || hostname === 'letsgofood.fr';
+
+    if (isProd) {
+      const baseDomain = 'letsgofood.fr';
+      if (role === 'merchant') window.location.href = `https://merchant.${baseDomain}/`;
+      else if (role === 'driver') window.location.href = `https://driver.${baseDomain}/`;
+      else if (role === 'admin') window.location.href = `https://admin.${baseDomain}/`;
+      else window.location.href = `https://app.${baseDomain}/`;
+    } else {
+      if (role === 'merchant') navigate('/merchant');
+      else if (role === 'driver') navigate('/driver');
+      else if (role === 'admin') navigate('/admin');
+      else navigate('/app');
+    }
+  };
+
   const handleGoogleLogin = async (role: string) => {
     setLoading(true);
     setError('');
 
     try {
       await loginWithGoogle(role);
-      if (role === 'merchant') navigate('/merchant');
-      else if (role === 'driver') navigate('/driver');
-      else if (role === 'admin') navigate('/admin');
-      else navigate('/app');
+      handleSubdomainRedirect(role);
     } catch (err: any) {
       if (err.message.includes('popup-closed-by-user') || err.message.includes('cancelled-by-user')) {
         setError('Authentification annulée.');
@@ -40,7 +55,7 @@ export default function Login() {
       setLoading(true);
       try {
         await loginAsEmail(email, 'admin'); 
-        navigate('/admin');
+        handleSubdomainRedirect('admin');
       } catch (err) {
         setError('Erreur bypass.');
       } finally {
