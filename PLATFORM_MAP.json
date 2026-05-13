@@ -1,0 +1,38 @@
+{
+  "urls": [
+    "https://letsgofood.fr",
+    "https://app.letsgofood.fr",
+    "https://merchant.letsgofood.fr",
+    "https://driver.letsgofood.fr",
+    "https://admin.letsgofood.fr",
+    "https://saas.letsgofood.fr",
+    "https://crm.letsgofood.fr"
+  ],
+  "routes": [
+    "/",
+    "/login",
+    "/app",
+    "/merchant",
+    "/driver",
+    "/admin",
+    "/checkout",
+    "/history"
+  ],
+  "subdomains": [
+    "app.letsgofood.fr",
+    "merchant.letsgofood.fr",
+    "driver.letsgofood.fr",
+    "admin.letsgofood.fr",
+    "saas.letsgofood.fr",
+    "crm.letsgofood.fr",
+    "letsgofood.fr"
+  ],
+  "api_endpoints": [
+    "POST /api/auth/login",
+    "POST /api/orders",
+    "GET /api/orders/:id",
+    "GET /api/restaurants",
+    "GET /api/drivers/available",
+    "POST /api/jules/plan"
+  ]
+}
