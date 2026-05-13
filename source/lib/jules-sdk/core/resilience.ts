@@ -42,6 +42,29 @@ export class CircuitBreaker {
   }
 }
 
+export class RetryPolicy {
+  constructor(
+    private maxRetries: number = 3,
+    private initialDelayMs: number = 1000,
+    private multiplier: number = 2
+  ) {}
+
+  async execute<T>(fn: () => Promise<T>): Promise<T> {
+    let lastError: any;
+    for (let i = 0; i < this.maxRetries; i++) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error;
+        const delay = this.initialDelayMs * Math.pow(this.multiplier, i);
+        console.warn(`[RETRY] Attempt ${i + 1} failed. Retrying in ${delay}ms...`);
+        await new Promise(res => setTimeout(res, delay));
+      }
+    }
+    throw lastError;
+  }
+}
+
 export const backoff = async (retryCount: number) => {
   const delay = Math.min(Math.pow(2, retryCount) * 1000, 30000);
   return new Promise(res => setTimeout(res, delay));

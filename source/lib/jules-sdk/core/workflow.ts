@@ -52,13 +52,28 @@ export class JulesWorkflowEngine {
 
   async transition(workflowId: string, newState: WorkflowState, contextUpdate: any) {
     console.log(`[JULES-WORKFLOW] Transitioning ${workflowId} to ${newState}`);
+    await this.checkpoint(workflowId, newState, contextUpdate);
+  }
+
+  async checkpoint(workflowId: string, state: WorkflowState, contextUpdate: any) {
+    console.log(`[JULES-WORKFLOW] [CHECKPOINT] Saving state for ${workflowId}: ${state}`);
     const instance = await this.persistence?.load(workflowId);
     if (instance) {
-      instance.state = newState;
+      instance.state = state;
       instance.context = { ...instance.context, ...contextUpdate };
       instance.updatedAt = new Date().toISOString();
       await this.persistence?.save(workflowId, instance);
     }
+  }
+
+  async resume(workflowId: string): Promise<WorkflowInstance | null> {
+    console.log(`[JULES-WORKFLOW] [RECOVERY] Resuming workflow ${workflowId}`);
+    const instance = await this.getWorkflow(workflowId);
+    if (instance && instance.state !== 'COMPLETED' && instance.state !== 'FAILED') {
+      // Logic to restart from last valid checkpoint
+      return instance;
+    }
+    return null;
   }
 
   async getWorkflow(workflowId: string): Promise<WorkflowInstance | null> {
