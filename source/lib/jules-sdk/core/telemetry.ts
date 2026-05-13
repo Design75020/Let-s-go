@@ -6,6 +6,12 @@ export interface SLO {
   unit: 'ms' | '%' | 'count';
 }
 
+export interface TraceContext {
+  traceId: string;
+  spanId: string;
+  parentSpanId?: string;
+}
+
 export class JulesTelemetry {
   private static instance: JulesTelemetry;
   private slos: Map<string, SLO> = new Map();
@@ -22,14 +28,22 @@ export class JulesTelemetry {
     return JulesTelemetry.instance;
   }
 
-  startSpan(name: string, correlationId: string) {
+  createContext(parent?: TraceContext): TraceContext {
+    return {
+      traceId: parent?.traceId || crypto.randomUUID(),
+      spanId: crypto.randomUUID().slice(0, 8),
+      parentSpanId: parent?.spanId
+    };
+  }
+
+  startSpan(name: string, context: TraceContext) {
     const startTime = Date.now();
-    console.log(`[TELEMETRY] [SPAN-START] ${name} | correlationId: ${correlationId}`);
+    console.log(`[TELEMETRY] [SPAN-START] ${name} | traceId: ${context.traceId} | spanId: ${context.spanId} | parentSpanId: ${context.parentSpanId || 'root'}`);
 
     return {
       end: () => {
         const duration = Date.now() - startTime;
-        console.log(`[TELEMETRY] [SPAN-END] ${name} | duration: ${duration}ms | correlationId: ${correlationId}`);
+        console.log(`[TELEMETRY] [SPAN-END] ${name} | duration: ${duration}ms | traceId: ${context.traceId}`);
         if (name.includes('pipeline')) {
           this.validateSLO('latency_p95', duration);
         }
@@ -50,7 +64,6 @@ export class JulesTelemetry {
 
   private triggerAlert(message: string) {
     console.error(`[ALERT-ENGINE] [CRITICAL] ${message}`);
-    // Future: Integration with PagerDuty / Slack Webhooks
   }
 
   recordSLI(name: string, value: number, target: number) {

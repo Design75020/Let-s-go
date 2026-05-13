@@ -29,8 +29,9 @@ export class JulesRuntime {
   }
 
   async handleEvent(event: JulesEvent, retryCount = 0): Promise<any> {
-    const span = telemetry.startSpan(`pipeline_${event.type}`, event.correlationId);
-    console.log(`[JULES-RUNTIME] Pipeline started: ${event.type} [${event.correlationId}] (Attempt ${retryCount + 1})`);
+    const context = telemetry.createContext({ traceId: event.correlationId, spanId: 'root' });
+    const span = telemetry.startSpan(`pipeline_${event.type}`, context);
+    console.log(`[JULES-RUNTIME] Pipeline started: ${event.type} [traceId: ${context.traceId}] (Attempt ${retryCount + 1})`);
 
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error("JULES Pipeline Timeout")), this.TIMEOUT_MS)

@@ -14,7 +14,8 @@ export class JulesSecuritySandbox {
   }
 
   async runSafe<T>(toolName: string, task: () => Promise<T>, correlationId: string): Promise<T> {
-    const span = telemetry.startSpan(`sandbox_${toolName}`, correlationId);
+    const context = telemetry.createContext({ traceId: correlationId, spanId: 'sandbox-root' });
+    const span = telemetry.startSpan(`sandbox_${toolName}`, context);
     console.log(`[SECURITY-SANDBOX] [EXEC] Tool: ${toolName} | correlationId: ${correlationId}`);
 
     try {
