@@ -12,6 +12,7 @@ import { JulesPlan } from '../types';
 import { registry } from '../tools/registry';
 import { telemetry } from './telemetry';
 import { cognitiveCache } from './cognitive-cache';
+import { aiPlanner } from '../tools/ai-planner';
 
 export type ModelTier = 'FAST' | 'SMART';
 
@@ -109,13 +110,8 @@ export class JulesRuntime {
       return cachedPlan;
     }
 
-    console.log(`[JULES-PLANNER] Generating new DAG for ${event.type}`);
-    const plan: JulesPlan = {
-      id: crypto.randomUUID(),
-      correlationId: event.correlationId,
-      tasks: [],
-      status: 'draft'
-    };
+    // Call functional AI Planner for real cognitive DAG generation
+    const plan = await aiPlanner.generateDAG(event, context);
 
     await cognitiveCache.set(prompt, plan);
     return plan;

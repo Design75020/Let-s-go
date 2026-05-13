@@ -1,5 +1,5 @@
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const API_KEY = process.env.GEMINI_API_KEY;
 
@@ -8,7 +8,7 @@ let genAI: any = null;
 export function getAI() {
   if (!API_KEY) return null;
   if (!genAI) {
-    genAI = new GoogleGenAI({ apiKey: API_KEY });
+    genAI = new GoogleGenerativeAI(API_KEY);
   }
   return {
     models: {
