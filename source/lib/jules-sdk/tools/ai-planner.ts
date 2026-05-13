@@ -2,6 +2,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { JulesEvent } from '../core/runtime';
 import { JulesPlan } from '../types';
+import { smartCache } from '../core/smart-caching';
 
 export class JulesAIPlanner {
   private genAI: GoogleGenerativeAI;
@@ -30,12 +31,18 @@ export class JulesAIPlanner {
   }
 
   async generateDAG(event: JulesEvent, context: any): Promise<JulesPlan> {
-    console.log(`[JULES-AI-PLANNER] Prompting LLM for event: ${event.type}`);
-
     const prompt = `Act as an expert orchestrator for LetsGoFood.
     Event: ${event.type}. Context: ${JSON.stringify(context)}.
     Generate a task graph (DAG) in JSON format.
     Requirements: tasks must have id, agent, action, payload, and optional dependsOn.`;
+
+    const cachedPlan = await smartCache.getSemantic(prompt);
+    if (cachedPlan) {
+      console.log(`[JULES-AI-PLANNER] [SMART-CACHE-HIT] Reusing plan for ${event.type}`);
+      return cachedPlan;
+    }
+
+    console.log(`[JULES-AI-PLANNER] Prompting LLM for event: ${event.type}`);
 
     try {
       // Functional simulation of structured generation
@@ -65,6 +72,7 @@ export class JulesAIPlanner {
       }
 
       console.log(`[JULES-AI-PLANNER] [SUCCESS] Valid DAG generated with ${plan.tasks.length} nodes.`);
+      await smartCache.setSemantic(prompt, plan);
       return plan;
 
     } catch (error) {

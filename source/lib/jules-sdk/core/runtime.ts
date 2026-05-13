@@ -13,6 +13,7 @@ import { registry } from '../tools/registry';
 import { telemetry } from './telemetry';
 import { cognitiveCache } from './cognitive-cache';
 import { aiPlanner } from '../tools/ai-planner';
+import { chaosMonkey } from './chaos-monkey';
 
 export type ModelTier = 'FAST' | 'SMART';
 
@@ -31,6 +32,11 @@ export class JulesRuntime {
   }
 
   async handleEvent(event: JulesEvent, retryCount = 0): Promise<any> {
+    // 0. Chaos Injection (Simulation for stress testing)
+    if (chaosMonkey.shouldFail(0.01)) { // 1% failure injection
+        await chaosMonkey.injectFailure('LATENCY');
+    }
+
     const context = telemetry.createContext({ traceId: event.correlationId, spanId: 'root' });
     const span = telemetry.startSpan(`pipeline_${event.type}`, context);
     console.log(`[JULES-RUNTIME] Pipeline started: ${event.type} [traceId: ${context.traceId}] (Attempt ${retryCount + 1})`);

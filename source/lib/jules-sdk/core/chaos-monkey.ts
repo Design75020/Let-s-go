@@ -1,5 +1,5 @@
 
-export type FailureType = 'LATENCY' | 'CRASH' | 'TIMEOUT' | 'AUTH_ERROR';
+export type FailureType = 'LATENCY' | 'CRASH' | 'TIMEOUT' | 'AUTH_ERROR' | 'LLM_TIMEOUT' | 'DB_LATENCY';
 
 export class JulesChaosMonkey {
   private active = false;
@@ -14,8 +14,11 @@ export class JulesChaosMonkey {
 
     switch (type) {
       case 'LATENCY':
+      case 'DB_LATENCY':
         await new Promise(res => setTimeout(res, 5000));
         break;
+      case 'LLM_TIMEOUT':
+        throw new Error("LLM Provider Timeout (Chaos Simulation)");
       case 'TIMEOUT':
         throw new Error("Simulated Pipeline Timeout");
       case 'AUTH_ERROR':
