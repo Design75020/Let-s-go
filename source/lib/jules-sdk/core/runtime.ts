@@ -11,6 +11,7 @@ export interface JulesEvent {
 import { JulesPlan } from '../types';
 import { registry } from '../tools/registry';
 import { telemetry } from './telemetry';
+import { cognitiveCache } from './cognitive-cache';
 
 export type ModelTier = 'FAST' | 'SMART';
 
@@ -100,13 +101,24 @@ export class JulesRuntime {
   }
 
   private async planExecution(event: JulesEvent, context: any): Promise<JulesPlan> {
-    console.log(`[JULES-PLANNER] Generating DAG for ${event.type}`);
-    return {
+    const prompt = `Plan for ${event.type} with payload ${JSON.stringify(event.payload)}`;
+    const cachedPlan = await cognitiveCache.get(prompt);
+
+    if (cachedPlan) {
+      console.log(`[JULES-PLANNER] Using cached plan for ${event.type}`);
+      return cachedPlan;
+    }
+
+    console.log(`[JULES-PLANNER] Generating new DAG for ${event.type}`);
+    const plan: JulesPlan = {
       id: crypto.randomUUID(),
       correlationId: event.correlationId,
       tasks: [],
       status: 'draft'
     };
+
+    await cognitiveCache.set(prompt, plan);
+    return plan;
   }
 
   private async executePlan(plan: JulesPlan) {

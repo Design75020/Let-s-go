@@ -22,7 +22,18 @@ export class JulesRegionManager {
 
   async failover() {
     console.warn(`[FAILOVER] Primary region ${this.currentRegion} unhealthy. Pivoting to standby...`);
-    // Logic to update DNS or API routes
+    const regions: Region[] = ['europe-west1', 'us-central1', 'asia-east1'];
+    const standby = regions.find(r => r !== this.currentRegion) || 'us-central1';
+    this.currentRegion = standby;
+    console.log(`[FAILOVER] Successfully migrated to ${this.currentRegion}`);
+  }
+
+  async triggerAutomatedFailover() {
+    console.log(`[FAILOVER] [AUTOMATED] Analyzing health signals...`);
+    const isHealthy = await this.checkHealth();
+    if (!isHealthy) {
+      await this.failover();
+    }
   }
 
   getBestRegion(): Region {

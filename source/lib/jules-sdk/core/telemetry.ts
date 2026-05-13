@@ -6,10 +6,12 @@ export interface SLO {
   unit: 'ms' | '%' | 'count';
 }
 
+// Aligned with OpenTelemetry SpanContext
 export interface TraceContext {
   traceId: string;
   spanId: string;
   parentSpanId?: string;
+  traceFlags?: number;
 }
 
 export class JulesTelemetry {
@@ -30,20 +32,21 @@ export class JulesTelemetry {
 
   createContext(parent?: TraceContext): TraceContext {
     return {
-      traceId: parent?.traceId || crypto.randomUUID(),
-      spanId: crypto.randomUUID().slice(0, 8),
-      parentSpanId: parent?.spanId
+      traceId: parent?.traceId || crypto.randomUUID().replace(/-/g, ''), // OTel format (hex)
+      spanId: crypto.randomUUID().replace(/-/g, '').slice(0, 16),
+      parentSpanId: parent?.spanId,
+      traceFlags: 1 // Sampled
     };
   }
 
   startSpan(name: string, context: TraceContext) {
     const startTime = Date.now();
-    console.log(`[TELEMETRY] [SPAN-START] ${name} | traceId: ${context.traceId} | spanId: ${context.spanId} | parentSpanId: ${context.parentSpanId || 'root'}`);
+    console.log(`[OTEL] [SPAN-START] ${name} | traceId: ${context.traceId} | spanId: ${context.spanId}`);
 
     return {
       end: () => {
         const duration = Date.now() - startTime;
-        console.log(`[TELEMETRY] [SPAN-END] ${name} | duration: ${duration}ms | traceId: ${context.traceId}`);
+        console.log(`[OTEL] [SPAN-END] ${name} | duration: ${duration}ms | traceId: ${context.traceId}`);
         if (name.includes('pipeline')) {
           this.validateSLO('latency_p95', duration);
         }
@@ -52,7 +55,7 @@ export class JulesTelemetry {
   }
 
   recordMetric(name: string, value: number, labels: Record<string, string> = {}) {
-    console.log(`[TELEMETRY] [METRIC] ${name}: ${value} | labels: ${JSON.stringify(labels)}`);
+    console.log(`[OTEL] [METRIC] ${name}: ${value} | labels: ${JSON.stringify(labels)}`);
   }
 
   private validateSLO(id: string, value: number) {
@@ -68,11 +71,11 @@ export class JulesTelemetry {
 
   recordSLI(name: string, value: number, target: number) {
     const isWithinTarget = value <= target;
-    console.log(`[TELEMETRY] [SLI] ${name}: ${value} | target: ${target} | status: ${isWithinTarget ? 'OK' : 'FAIL'}`);
+    console.log(`[OTEL] [SLI] ${name}: ${value} | target: ${target} | status: ${isWithinTarget ? 'OK' : 'FAIL'}`);
   }
 
   trackUptime(serviceName: string, status: 'UP' | 'DOWN') {
-    console.log(`[TELEMETRY] [UPTIME] service: ${serviceName} | status: ${status}`);
+    console.log(`[OTEL] [UPTIME] service: ${serviceName} | status: ${status}`);
     if (status === 'DOWN') {
       this.triggerAlert(`Service ${serviceName} is DOWN`);
     }
