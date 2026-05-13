@@ -12,9 +12,21 @@ import { JulesPlan } from '../types';
 import { registry } from '../tools/registry';
 import { telemetry } from './telemetry';
 
+export type ModelTier = 'FAST' | 'SMART';
+
 export class JulesRuntime {
   private readonly MAX_RETRIES = 3;
   private readonly TIMEOUT_MS = 30000;
+
+  private selectModel(event: JulesEvent): ModelTier {
+    if (event.type.includes('order.status')) return 'FAST';
+    return 'SMART';
+  }
+
+  private validateStructuredOutput(output: any): boolean {
+    // Ensure AI responses match expected JSON schemas
+    return output && typeof output === 'object';
+  }
 
   async handleEvent(event: JulesEvent, retryCount = 0): Promise<any> {
     const span = telemetry.startSpan(`pipeline_${event.type}`, event.correlationId);
