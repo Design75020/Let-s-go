@@ -1,20 +1,14 @@
 
-export interface RegionBounds {
-  name: string;
-  zipCodes: string[];
-}
-
-const PARIS_IDF_REGION: RegionBounds = {
-  name: 'Paris + Île-de-France',
-  zipCodes: ['75', '77', '78', '91', '92', '93', '94', '95']
-};
+import { REGIONAL_CONFIG } from '../constants';
 
 export class DispatchService {
   async findAvailableDriver(zipCode: string) {
     // Check if in regional bounds
     const prefix = zipCode.slice(0, 2);
-    if (!PARIS_IDF_REGION.zipCodes.includes(prefix)) {
-      console.warn(`[DISPATCH] Order outside of ${PARIS_IDF_REGION.name} ignored.`);
+    const region = REGIONAL_CONFIG.PARIS_IDF;
+
+    if (!region.zipCodes.includes(prefix)) {
+      console.warn(`[DISPATCH] Order outside of ${region.name} ignored.`);
       return null;
     }
 

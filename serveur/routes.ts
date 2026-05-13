@@ -12,17 +12,28 @@ router.post('/api/auth/login', async (req, res) => {
   if (!email || !password) return res.status(400).json({ error: 'Email et mot de passe requis' });
   
   // Real-world: Check against DB. For now, simulation.
-  const token = jwt.sign({ email, role: 'client', tenantId: 'paris-01' }, SECRET, { expiresIn: '24h' });
-  res.json({ token, user: { email, role: 'client', tenantId: 'paris-01' } });
+  const token = jwt.sign({ email, role: 'client', tenantId: 'paris-75-01' }, SECRET, { expiresIn: '24h' });
+  res.json({ token, user: { email, role: 'client', tenantId: 'paris-75-01' } });
 });
 
 // ORDERS ENDPOINT
 router.post('/api/orders', async (req, res) => {
-  const { items, total, restaurantId, tenantId } = req.body;
-  if (!items || !total || !restaurantId) return res.status(400).json({ error: 'Données de commande incomplètes' });
+  const { items, total, restaurantId, tenantId, zipCode } = req.body;
+
+  // Strict JSON Schema Validation (Mandatory fields)
+  if (!items || !total || !restaurantId || !tenantId || !zipCode) {
+    return res.status(400).json({
+        error: 'Validation failed',
+        required: ['items', 'total', 'restaurantId', 'tenantId', 'zipCode']
+    });
+  }
+
+  // Regional Boundary Check (Paris/IDF)
+  const isIDF = ['75', '77', '78', '91', '92', '93', '94', '95'].includes(zipCode.slice(0, 2));
+  if (!isIDF) return res.status(403).json({ error: 'Zone géographique non supportée' });
 
   // Logic to save to Firestore/DB
-  console.log(`[ORDER] New order created for tenant ${tenantId || 'paris-default'}`);
+  console.log(`[ORDER] [${tenantId}] New order created in ${zipCode}`);
   res.status(201).json({ status: 'pending', id: 'ord_' + Date.now() });
 });
 

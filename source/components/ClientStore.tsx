@@ -72,6 +72,14 @@ export default function ClientStore() {
 
   const placeOrder = async () => {
     if (!user || basketArray.length === 0 || !selectedResto) return;
+
+    // Paris V1 Regional Constraint (Mock check)
+    const zipCode = prompt("Confirmez votre code postal (Paris/IDF uniquement):", "75000");
+    if (!zipCode || !['75', '77', '78', '91', '92', '93', '94', '95'].includes(zipCode.slice(0, 2))) {
+      alert("Désolé, LetsGoFood V1 est limité à Paris et l'Île-de-France.");
+      return;
+    }
+
     setOrderStatus('ordering');
     const correlationId = crypto.randomUUID();
     console.log(`[ORDER] [${correlationId}] Placing order for ${user.name} at ${selectedResto.name}`);
@@ -86,7 +94,9 @@ export default function ClientStore() {
         status: 'pending',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        location: location
+        location: location,
+        zipCode: zipCode,
+        tenantId: user.tenantId || 'paris-75-01'
       });
 
       const newOrder = {
