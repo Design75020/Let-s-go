@@ -4,7 +4,6 @@ import { Search, ShoppingBag, MapPin, Star, Clock, ChevronLeft, Plus, Minus, Che
 import { db } from '../lib/firebase';
 import { collection, onSnapshot, query, addDoc, serverTimestamp, doc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { emitEvent } from '../lib/events';
 
 export default function ClientStore() {
   const [restaurants, setRestaurants] = useState<any[]>([]);
@@ -101,14 +100,8 @@ export default function ClientStore() {
       setBasket({});
       setOrderStatus('tracking');
 
-      await emitEvent({
-        type: 'order.created',
-        actorId: user.uid,
-        actorRole: 'client',
-        resourceId: docRef.id,
-        correlationId,
-        data: { restaurantName: selectedResto.name, total: totalPrice }
-      });
+      // V1 Simplified event logging
+      console.log(`[ORDER] Created: ${docRef.id}`);
     } catch (err) {
       console.error(err);
       setOrderStatus('idle');

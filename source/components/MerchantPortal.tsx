@@ -4,7 +4,6 @@ import { LayoutDashboard, Utensils, ClipboardList, Settings, LogOut, Plus, Searc
 import { useAuth } from '../context/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { emitEvent } from '../lib/events';
 
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, 
@@ -459,13 +458,7 @@ function OrderMonitor({ restaurantId }: { restaurantId?: string }) {
         updatedAt: serverTimestamp()
       });
 
-      await emitEvent({
-        type: `order.${status}` as any,
-        actorId: restaurantId || 'unknown',
-        actorRole: 'merchant',
-        resourceId: orderId,
-        correlationId
-      });
+      console.log(`[ORDER] Status update: ${status}`);
     } catch (error) {
       console.error("[ORDER] Error updating status:", error);
     }

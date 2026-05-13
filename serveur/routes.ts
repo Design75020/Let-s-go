@@ -2,48 +2,63 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import { getAI } from './ai';
-import { Cache } from './services/cache';
 
 const router = Router();
-const SECRET = process.env.JWT_SECRET || 'lgf-v2-master-key';
+const SECRET = process.env.JWT_SECRET || 'lgf-paris-prod-key';
 
-// AUTH
+// AUTH ENDPOINT
 router.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email et mot de passe requis' });
   
-  // Simulation - In production this would check MongoDB/Firestore
-  if (email && password) {
-    const token = jwt.sign({ email, role: 'merchant' }, SECRET, { expiresIn: '24h' });
-    return res.json({
-      token,
-      user: {
-        id: 'u1',
-        name: 'Restaurant La Gazelle',
-        email,
-        role: 'merchant'
-      }
-    });
-  }
-  res.status(401).json({ error: 'Identifiants invalides' });
+  // Real-world: Check against DB. For now, simulation.
+  const token = jwt.sign({ email, role: 'client', tenantId: 'paris-01' }, SECRET, { expiresIn: '24h' });
+  res.json({ token, user: { email, role: 'client', tenantId: 'paris-01' } });
 });
 
-// MERCHANT API
-router.get('/api/merchant/menu', (req, res) => {
+// ORDERS ENDPOINT
+router.post('/api/orders', async (req, res) => {
+  const { items, total, restaurantId, tenantId } = req.body;
+  if (!items || !total || !restaurantId) return res.status(400).json({ error: 'Données de commande incomplètes' });
+
+  // Logic to save to Firestore/DB
+  console.log(`[ORDER] New order created for tenant ${tenantId || 'paris-default'}`);
+  res.status(201).json({ status: 'pending', id: 'ord_' + Date.now() });
+});
+
+router.get('/api/orders/:id', (req, res) => {
+  res.json({ id: req.params.id, status: 'preparing', items: [] });
+});
+
+// RESTAURANTS ENDPOINT
+router.get('/api/restaurants', (req, res) => {
+  // Filtered by Paris region in production
   res.json([
-    { id: 1, name: 'Burger Signature', price: 15.90, category: 'Burgers' },
-    { id: 2, name: 'Frites Maison', price: 4.50, category: 'Accompagnements' }
+    { id: 'r1', name: 'Le Gourmet Paris', category: 'Français', region: 'Paris' },
+    { id: 'r2', name: 'LGF Burger IDF', category: 'Burgers', region: 'IDF' }
   ]);
 });
 
-// AI HELPERS (The "AI-Powered" part of the platform)
-router.post('/api/ai/optimize-menu', async (req, res) => {
+// DRIVERS ENDPOINT
+router.get('/api/drivers/available', (req, res) => {
+  res.json([{ id: 'd1', name: 'Jean Expert', status: 'online' }]);
+});
+
+// JULES LIGHT (AI Powered orchestration)
+router.post('/api/jules/plan', async (req, res) => {
+  const { event } = req.body;
   const ai = getAI();
-  if (!ai) return res.status(503).json({ error: 'AI not configured' });
+  if (!ai) return res.status(503).json({ error: 'AI Orchestrator offline' });
 
   const result = await ai.models.generateContent(
-    'Analyse ces produits et suggère des prix psychologiques : ' + JSON.stringify(req.body.items)
+    `Act as JULES Light. Event: ${event}. Provide a single JSON action from: ["ASSIGN_DRIVER", "NOTIFY_USER", "REJECT_ORDER"].`
   );
-  res.json({ advice: result.text });
+
+  // Policy Guard (whitelist)
+  const allowed = ["ASSIGN_DRIVER", "NOTIFY_USER", "REJECT_ORDER"];
+  const action = allowed.find(a => result.text.includes(a)) || "NOTIFY_USER";
+
+  res.json({ action, timestamp: new Date().toISOString() });
 });
 
 export default router;
