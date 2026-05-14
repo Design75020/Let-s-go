@@ -6,11 +6,13 @@
 export const DEV_HOSTS = [
   'localhost',
   '127.0.0.1',
-  '.github.dev',
-  '.vercel.app',
-  '.webcontainer.io',
-  '.stackblitz.io',
-  '.bolt.new'
+  'github.dev',
+  'app.github.dev',
+  'githubpreview',
+  'vercel.app',
+  'webcontainer.io',
+  'stackblitz.io',
+  'bolt.new'
 ];
 
 export const PROD_DOMAINS = [
