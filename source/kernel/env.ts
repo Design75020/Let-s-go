@@ -12,7 +12,8 @@ export const DEV_HOSTS = [
   'vercel.app',
   'webcontainer.io',
   'stackblitz.io',
-  'bolt.new'
+  'bolt.new',
+  'run.app'
 ];
 
 export const PROD_DOMAINS = [
