@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, ArrowRight, ShieldCheck, Zap, Globe, BarChart3 } from 'lucide-react';
+import { isProductionHost } from '../kernel/guard';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -9,8 +10,8 @@ export default function LandingPage() {
   const handleNavigation = (path: string) => {
     const hostname = window.location.hostname;
 
-    // In production, we must use absolute URLs for cross-subdomain navigation
-    if (hostname.endsWith('.letsgofood.fr') || hostname === 'letsgofood.fr') {
+    // Use Centralized Kernel Guard for Production Check
+    if (isProductionHost(hostname)) {
       const baseDomain = 'letsgofood.fr';
       if (path === '/login') window.location.href = `https://app.${baseDomain}/login`;
       else if (path === '/app') window.location.href = `https://app.${baseDomain}`;
@@ -19,7 +20,7 @@ export default function LandingPage() {
       else if (path === '/admin') window.location.href = `https://admin.${baseDomain}`;
       else window.location.href = `https://${baseDomain}${path}`;
     } else {
-      // For localhost and other environments, use internal navigation
+      // For localhost and other dev environments (Codespaces), use internal navigation
       navigate(path);
     }
   };

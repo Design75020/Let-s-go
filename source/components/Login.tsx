@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { Lock, Mail, Loader2, ShieldCheck, Truck } from 'lucide-react';
+import { isProductionHost } from '../kernel/guard';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -15,14 +16,14 @@ export default function Login() {
 
   const handleSubdomainRedirect = (role: string) => {
     const hostname = window.location.hostname;
-    const isProd = hostname.endsWith('.letsgofood.fr') || hostname === 'letsgofood.fr';
 
-    if (isProd) {
+    // Use Centralized Kernel Guard
+    if (isProductionHost(hostname)) {
       const baseDomain = 'letsgofood.fr';
-      if (role === 'merchant') window.location.href = `https://merchant.${baseDomain}/`;
-      else if (role === 'driver') window.location.href = `https://driver.${baseDomain}/`;
-      else if (role === 'admin') window.location.href = `https://admin.${baseDomain}/`;
-      else window.location.href = `https://app.${baseDomain}/`;
+      if (role === 'merchant') window.location.href = 'https://merchant.' + baseDomain + '/';
+      else if (role === 'driver') window.location.href = 'https://driver.' + baseDomain + '/';
+      else if (role === 'admin') window.location.href = 'https://admin.' + baseDomain + '/';
+      else window.location.href = 'https://app.' + baseDomain + '/';
     } else {
       if (role === 'merchant') navigate('/merchant');
       else if (role === 'driver') navigate('/driver');
