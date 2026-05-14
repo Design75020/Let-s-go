@@ -36,6 +36,26 @@ export default function DriverApp() {
     });
   };
 
+  // Simulate Location Updates when delivering
+  useEffect(() => {
+    const activeOrders = orders.filter(o => o.status === 'picked_up' && o.driverId === user.uid);
+    if (activeOrders.length === 0) return;
+
+    const interval = setInterval(async () => {
+      // Simulate moving around Paris (center: 48.8566, 2.3522)
+      const lat = 48.8566 + (Math.random() - 0.5) * 0.01;
+      const lng = 2.3522 + (Math.random() - 0.5) * 0.01;
+
+      for (const order of activeOrders) {
+        await updateDoc(doc(db, 'orders', order.id), {
+          driverLocation: { lat, lng }
+        });
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [orders, user.uid]);
+
   return (
     <div className="min-h-screen bg-[#08090a] text-white">
       {/* Mobile Top Bar */}

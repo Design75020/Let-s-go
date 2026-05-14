@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ShoppingBag, MapPin, Star, Clock, ChevronLeft, Plus, Minus, CheckCircle2, LogOut, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { collection, onSnapshot, query, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +14,7 @@ export default function ClientStore() {
   const [isBasketOpen, setIsBasketOpen] = useState(false);
   const [orderStatus, setOrderStatus] = useState<'idle' | 'ordering' | 'success'>('idle');
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const q = query(collection(db, 'restaurants'));
@@ -53,14 +55,14 @@ export default function ClientStore() {
     });
   };
 
-  const basketArray = Object.values(basket);
-  const totalPrice = basketArray.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const basketArray = Object.values(basket) as any[];
+  const totalPrice = basketArray.reduce((acc, item) => acc + ((item.price || 0) * (item.quantity || 0)), 0);
 
   const placeOrder = async () => {
     if (!user || basketArray.length === 0 || !selectedResto) return;
     setOrderStatus('ordering');
     try {
-      await addDoc(collection(db, 'orders'), {
+      const docRef = await addDoc(collection(db, 'orders'), {
         clientId: user.uid,
         clientName: user.name,
         restaurantId: selectedResto.id,
@@ -73,9 +75,8 @@ export default function ClientStore() {
       setBasket({});
       setOrderStatus('success');
       setTimeout(() => {
-        setOrderStatus('idle');
-        setSelectedResto(null);
-      }, 3000);
+        navigate(`/tracking/${docRef.id}`);
+      }, 2000);
     } catch (err) {
       console.error(err);
       setOrderStatus('idle');
@@ -172,13 +173,13 @@ export default function ClientStore() {
               </h3>
               
               <div className="space-y-6 mb-8 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
-                {basketArray.map((item) => (
+                {basketArray.map((item: any) => (
                   <div key={item.id} className="flex justify-between items-start">
                     <div>
                       <p className="font-bold text-sm tracking-tight">{item.name}</p>
                       <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mt-1">{item.quantity}x {item.price?.toFixed(2)}€</p>
                     </div>
-                    <span className="text-sm font-black italic">{(item.price * item.quantity).toFixed(2)}€</span>
+                    <span className="text-sm font-black italic">{( (item.price || 0) * (item.quantity || 0) ).toFixed(2)}€</span>
                   </div>
                 ))}
                 {basketArray.length === 0 && (
@@ -191,7 +192,7 @@ export default function ClientStore() {
               <div className="pt-6 border-t border-white/5 space-y-3 mb-8">
                 <div className="flex justify-between items-center text-xs font-bold text-white/40">
                   <span>Sous-total</span>
-                  <span>{totalPrice.toFixed(2)}€</span>
+                  <span>{totalPrice?.toFixed(2)}€</span>
                 </div>
                 <div className="flex justify-between items-center text-xs font-bold text-white/40">
                   <span>Frais de livraison</span>
@@ -199,7 +200,7 @@ export default function ClientStore() {
                 </div>
                 <div className="flex justify-between items-center text-2xl font-black italic pt-2">
                   <span>TOTAL</span>
-                  <span className="text-[#ff385c]">{(totalPrice > 0 ? totalPrice + 2.50 : 0).toFixed(2)}€</span>
+                  <span className="text-[#ff385c]">{(totalPrice > 0 ? (totalPrice + 2.50) : 0).toFixed(2)}€</span>
                 </div>
               </div>
 

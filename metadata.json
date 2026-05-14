@@ -1,6 +1,6 @@
 {
-  "name": "LetsGoFood Eco-System",
-  "description": "Ecosystème unifié (6-en-1) : Plateforme multi-tenant (Client, Marchand, Livreur, SaaS) + Archives historiques.",
-  "requestFramePermissions": [],
+  "name": "letsgofood-platform",
+  "description": "Plateforme unifiée 6-en-1 : Livraison Client, Merchant Portal, Driver Dispatch, SaaS et CRM.",
+  "requestFramePermissions": ["geolocation"],
   "majorCapabilities": []
 }

@@ -8,7 +8,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 import MerchantPortal from './components/MerchantPortal';
 import DriverApp from './components/DriverApp';
 import ClientStore from './components/ClientStore';
+import OrderTracking from './components/OrderTracking';
 import AdminPortal from './components/AdminPortal';
+import DevLaunchpad from './components/DevLaunchpad';
 
 const UnauthorizedDomain = () => (
   <div className="min-h-screen bg-[#08090a] text-white flex flex-col items-center justify-center p-6 text-center">
@@ -25,8 +27,22 @@ const UnauthorizedDomain = () => (
 
 export default function App() {
   const hostname = window.location.hostname;
+  const searchParams = new URLSearchParams(window.location.search);
+  const viewParam = searchParams.get('view');
 
   const AppContent = useMemo(() => {
+    // If we have a ?view=Param, override hostname logic for development/preview
+    if (viewParam) {
+      switch (viewParam) {
+        case 'landing': return <LandingPage />;
+        case 'app': return <ProtectedRoute><ClientStore /></ProtectedRoute>;
+        case 'merchant': return <ProtectedRoute><MerchantPortal /></ProtectedRoute>;
+        case 'driver': return <ProtectedRoute><DriverApp /></ProtectedRoute>;
+        case 'admin': return <ProtectedRoute><AdminPortal /></ProtectedRoute>;
+        case 'dev': return <DevLaunchpad />;
+      }
+    }
+
     // Production & Staging mapping
     switch (hostname) {
       case 'letsgofood.fr':
@@ -65,36 +81,23 @@ export default function App() {
       // Local development fallback
       case 'localhost':
       case '127.0.0.1':
+      default:
+        // Handle AIS preview URLs or unknown domains
         return (
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/app" element={<ProtectedRoute><ClientStore /></ProtectedRoute>} />
+            <Route path="/tracking/:id" element={<ProtectedRoute><OrderTracking /></ProtectedRoute>} />
             <Route path="/merchant/*" element={<ProtectedRoute><MerchantPortal /></ProtectedRoute>} />
             <Route path="/driver/*" element={<ProtectedRoute><DriverApp /></ProtectedRoute>} />
             <Route path="/admin/*" element={<ProtectedRoute><AdminPortal /></ProtectedRoute>} />
+            <Route path="/dev" element={<DevLaunchpad />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         );
-
-      default:
-        // Handle AIS preview URLs or unknown domains
-        if (hostname.includes('run.app') || hostname.includes('webcontainer.io')) {
-          return (
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/app" element={<ProtectedRoute><ClientStore /></ProtectedRoute>} />
-              <Route path="/merchant/*" element={<ProtectedRoute><MerchantPortal /></ProtectedRoute>} />
-              <Route path="/driver/*" element={<ProtectedRoute><DriverApp /></ProtectedRoute>} />
-              <Route path="/admin/*" element={<ProtectedRoute><AdminPortal /></ProtectedRoute>} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          );
-        }
-        return <UnauthorizedDomain />;
     }
-  }, [hostname]);
+  }, [hostname, viewParam]);
 
   return (
     <AuthProvider>

@@ -1,6 +1,0 @@
-{
-  "name": "LetsGoFood Backend",
-  "description": "Backend Express avec MongoDB, Stripe, Auth JWT, Delivery system et WebSockets.",
-  "requestFramePermissions": [],
-  "majorCapabilities": []
-}
