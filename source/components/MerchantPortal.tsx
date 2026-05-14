@@ -450,10 +450,18 @@ function OrderMonitor({ restaurantId }: { restaurantId?: string }) {
   }, [restaurantId]);
 
   const updateStatus = async (orderId: string, status: string) => {
-    await updateDoc(doc(db, 'orders', orderId), { 
-      status,
-      updatedAt: serverTimestamp()
-    });
+    const correlationId = crypto.randomUUID();
+    console.log(`[ORDER] [${correlationId}] Updating order ${orderId} status to ${status}`);
+    try {
+      await updateDoc(doc(db, 'orders', orderId), {
+        status,
+        updatedAt: serverTimestamp()
+      });
+
+      console.log(`[ORDER] Status update: ${status}`);
+    } catch (error) {
+      console.error("[ORDER] Error updating status:", error);
+    }
   };
 
   return (

@@ -18,7 +18,7 @@ export default function DriverApp() {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [user.uid]);
 
   const acceptOrder = async (orderId: string) => {
     await updateDoc(doc(db, 'orders', orderId), {

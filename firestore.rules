@@ -9,7 +9,7 @@ service cloud.firestore {
     // HELPERS
     function isSignedIn() { return request.auth != null; }
     function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
-    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function isTenant(tenantId) { return isSignedIn() && request.auth.token.tenantId == tenantId; }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
 
@@ -29,10 +29,10 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isSignedIn() && 
         incoming().ownerId == request.auth.uid &&
-        incoming().keys().hasAll(['name', 'ownerId', 'status']);
+        incoming().tenantId == request.auth.token.tenantId;
       allow update: if isSignedIn() && 
         existing().ownerId == request.auth.uid &&
-        incoming().diff(existing()).affectedKeys().hasAny(['status', 'name', 'category']);
+        incoming().tenantId == existing().tenantId;
     }
 
     // MENU ITEMS
@@ -42,6 +42,13 @@ service cloud.firestore {
         get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.ownerId == request.auth.uid;
     }
 
+    // AUDIT LOGS (Immutable)
+    match /audit_logs/{logId} {
+      allow read: if isSignedIn() && request.auth.token.role == 'admin';
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
     // ORDERS
     match /orders/{orderId} {
       allow get: if isSignedIn() && (
@@ -49,13 +56,12 @@ service cloud.firestore {
         resource.data.driverId == request.auth.uid ||
         get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid
       );
-      allow list: if isSignedIn(); // Queries must filter by client/driver/restaurant
-      allow create: if isSignedIn() && incoming().clientId == request.auth.uid;
-      allow update: if isSignedIn() && (
-        (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'driverId']) && incoming().status == 'accepted') || // Driver taking order
-        (existing().driverId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status'])) || // Driver updating status
-        (get(/databases/$(database)/documents/restaurants/$(existing().restaurantId)).data.ownerId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status'])) // Merchant updating status
+      allow list: if isSignedIn() && (
+        resource.data.tenantId == request.auth.token.tenantId &&
+        (resource.data.clientId == request.auth.uid || resource.data.driverId == request.auth.uid)
       );
+      allow create: if isSignedIn() && incoming().tenantId == request.auth.token.tenantId;
+      allow update: if isSignedIn() && existing().tenantId == request.auth.token.tenantId;
     }
   }
 }
