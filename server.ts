@@ -8,7 +8,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import apiRoutes from './server/routes';
+import apiRoutes from './serveur/routes';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
