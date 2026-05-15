@@ -9,27 +9,36 @@ service cloud.firestore {
     // HELPERS
     function isSignedIn() { return request.auth != null; }
     function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
-    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function getUserRole() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role; }
+    function isAdmin() { return isSignedIn() && getUserRole() == 'admin'; }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
 
     // USERS
     match /users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if isSignedIn() && isOwner(userId) && 
+      // Users can only read their own profile
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+
+      // Initial creation restricted, roles should ideally be managed by backend
+      allow create: if isOwner(userId) &&
         incoming().keys().hasAll(['name', 'email', 'role']) &&
-        incoming().role in ['client', 'merchant', 'driver'];
-      allow update: if isSignedIn() && isOwner(userId) &&
+        incoming().role in ['customer', 'merchant', 'driver'];
+
+      allow update: if isOwner(userId) &&
         incoming().diff(existing()).affectedKeys().hasOnly(['name']);
     }
 
     // RESTAURANTS
     match /restaurants/{restaurantId} {
+      // Publicly readable for browsing
       allow read: if true;
+
+      // Management restricted to owner (merchant)
       allow create: if isSignedIn() && 
         incoming().ownerId == request.auth.uid &&
-        incoming().keys().hasAll(['name', 'ownerId', 'status']);
+        getUserRole() == 'merchant';
+
       allow update: if isSignedIn() && 
         existing().ownerId == request.auth.uid &&
         incoming().diff(existing()).affectedKeys().hasAny(['status', 'name', 'category']);
@@ -44,17 +53,38 @@ service cloud.firestore {
 
     // ORDERS
     match /orders/{orderId} {
+      // Strict access: Client, assigned Driver, or the target Restaurant's Owner
       allow get: if isSignedIn() && (
         resource.data.clientId == request.auth.uid || 
         resource.data.driverId == request.auth.uid ||
-        get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid
+        get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid ||
+        isAdmin()
       );
-      allow list: if isSignedIn(); // Queries must filter by client/driver/restaurant
+
+      // LISTING: Restrict to role-specific filters to prevent scraping
+      allow list: if isSignedIn() && (
+        request.query.limit <= 100 && (
+          request.query.filters.clientId == request.auth.uid ||
+          request.query.filters.driverId == request.auth.uid ||
+          (request.query.filters.restaurantId != null && get(/databases/$(database)/documents/restaurants/$(request.query.filters.restaurantId)).data.ownerId == request.auth.uid) ||
+          isAdmin() ||
+          // Driver looking for ready orders
+          (request.query.filters.status == 'ready' && getUserRole() == 'driver')
+        )
+      );
+
+      // Order creation should ideally move to backend API to validate prices/stock
       allow create: if isSignedIn() && incoming().clientId == request.auth.uid;
+
+      // Status updates: limited to assigned actors
       allow update: if isSignedIn() && (
-        (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'driverId']) && incoming().status == 'accepted') || // Driver taking order
-        (existing().driverId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status'])) || // Driver updating status
-        (get(/databases/$(database)/documents/restaurants/$(existing().restaurantId)).data.ownerId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status'])) // Merchant updating status
+        // Driver taking order
+        (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'driverId', 'driverName']) && incoming().status == 'picked_up') ||
+        // Driver delivering
+        (existing().driverId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'driverLocation'])) ||
+        // Merchant managing preparation
+        (get(/databases/$(database)/documents/restaurants/$(existing().restaurantId)).data.ownerId == request.auth.uid &&
+         incoming().diff(existing()).affectedKeys().hasAny(['status', 'updatedAt']))
       );
     }
   }

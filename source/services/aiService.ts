@@ -1,14 +1,14 @@
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function optimizeMenuPrices(menuItems: { name: string; price: number; category: string }[]) {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not configured.");
+    throw new Error("VITE_GEMINI_API_KEY is not configured on client.");
   }
 
-  const ai = new GoogleGenAI({ apiKey });
-  const model = "gemini-3-flash-preview";
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   const prompt = `
     En tant qu'expert en stratégie de prix pour restaurants, analyse le menu suivant et propose des optimisations de prix basées sur les tendances du marché (prix moyens, rentabilité, psychologie des prix).
@@ -20,12 +20,8 @@ export async function optimizeMenuPrices(menuItems: { name: string; price: numbe
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt
-    });
-    
-    return response.text || "Aucun conseil généré.";
+    const result = await model.generateContent(prompt);
+    return result.response.text();
   } catch (error) {
     console.error("AI Price Optimization Error:", error);
     throw new Error("Impossible de générer des conseils d'optimisation via l'IA.");

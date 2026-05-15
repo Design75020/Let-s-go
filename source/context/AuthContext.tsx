@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut, signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider, getUserProfile, createUserProfile } from '../lib/firebase';
+import { syncAuth } from '../services/authApi';
 
 interface AuthContextType {
   user: any;
@@ -21,9 +22,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         const profile = await getUserProfile(firebaseUser.uid);
-        setUser(profile ? { ...profile, uid: firebaseUser.uid } : null);
+        if (profile) {
+          // Sync with backend to get valid app token
+          try {
+            await syncAuth(firebaseUser, profile.role);
+          } catch (e) {
+            console.error("Auth sync failed", e);
+          }
+          setUser({ ...profile, uid: firebaseUser.uid });
+        } else {
+          setUser(null);
+        }
       } else {
         setUser(null);
+        localStorage.removeItem('lgf_token');
       }
       setLoading(false);
     });
@@ -31,48 +43,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loginAsEmail = async (email: string, role: string) => {
-    // SECURITY NOTE: This is an emergency bypass for the preview environment 
-    // when Google Auth popups are blocked by browser/domain restrictions.
-    if (email === 'letsgofood26@gmail.com' || email === 'admin@lgf.com') {
-      const mockUid = 'dev-uid-' + email.split('@')[0];
-      const profile = {
-        name: 'Sidi (Dev)',
-        email,
-        role,
-        uid: mockUid,
-        isDev: true
-      };
-      setUser(profile);
-      setLoading(false);
-      return;
-    }
-    throw new Error('Non autorisé.');
+    // SECURITY: Backdoor removed. Dev login disabled in production.
+    throw new Error('Login direct désactivé. Utilisez Google Auth.');
   };
 
   const loginWithGoogle = async (role: string) => {
-    // If we're bypassing Google Auth for the specific tester email
-    // This is handled partly in Login.tsx, but here we enforce the logic
     const result = await signInWithPopup(auth, googleProvider);
-    let effectiveRole = role;
     
-    // Explicitly grant admin role to the provided tester email
-    if (result.user.email === 'letsgofood26@gmail.com') {
-      effectiveRole = 'admin';
+    let profile = await getUserProfile(result.user.uid);
+    if (!profile) {
+      // New users get the requested role (restricted by backend/rules later)
+      profile = await createUserProfile(result.user, role);
     }
 
-    const profile = await getUserProfile(result.user.uid);
-    if (!profile) {
-      const newProfile = await createUserProfile(result.user, effectiveRole);
-      setUser({ ...newProfile, uid: result.user.uid });
-    } else {
-      // If user logs in with a specific role via the portal buttons, 
-      // we might want to update their role for easier testing
-      if (profile.role !== effectiveRole && (result.user.email === 'letsgofood26@gmail.com' || result.user.email === 'admin@lgf.com')) {
-        profile.role = effectiveRole;
-        await createUserProfile(result.user, effectiveRole); // Update role in DB
-      }
-      setUser({ ...profile, uid: result.user.uid });
-    }
+    // Sync with backend immediately after login
+    await syncAuth(result.user, profile.role);
+    setUser({ ...profile, uid: result.user.uid });
   };
 
   const logout = async () => {

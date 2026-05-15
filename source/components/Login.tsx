@@ -36,19 +36,7 @@ export default function Login() {
 
   const handleDevLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email === 'letsgofood26@gmail.com' || email === 'admin@lgf.com') {
-      setLoading(true);
-      try {
-        await loginAsEmail(email, 'admin'); 
-        navigate('/admin');
-      } catch (err) {
-        setError('Erreur bypass.');
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      setError('Email non autorisé pour l\'accès direct.');
-    }
+    setError('Accès direct désactivé par mesure de sécurité (Hardening P0). Utilisez Google Auth.');
   };
 
   return (

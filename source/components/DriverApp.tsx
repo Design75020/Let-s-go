@@ -11,29 +11,49 @@ export default function DriverApp() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Orders ready for pickup or already assigned to this driver
+    if (!user) return;
+    // SECURITY: Listen to orders assigned to me or ready for pickup
     const q = query(collection(db, 'orders'), where('status', 'in', ['ready', 'picked_up']));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const allOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      // Filter locally for simplicity in this demo, but rules prevent unauthorized access to specific docs
+      const filtered = allOrders.filter((o: any) => o.status === 'ready' || o.driverId === user.uid);
+      setOrders(filtered);
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   const acceptOrder = async (orderId: string) => {
-    await updateDoc(doc(db, 'orders', orderId), {
-      status: 'picked_up',
-      driverId: user.uid,
-      driverName: user.name,
-      updatedAt: serverTimestamp()
-    });
+    try {
+      const response = await fetch(`/api/orders/${orderId}/accept`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('lgf_token')}`
+        },
+        body: JSON.stringify({ driverName: user.name })
+      });
+      if (!response.ok) throw new Error('Impossible d\'accepter cette mission');
+    } catch (err) {
+      alert((err as Error).message);
+    }
   };
 
   const deliverOrder = async (orderId: string) => {
-    await updateDoc(doc(db, 'orders', orderId), {
-      status: 'delivered',
-      updatedAt: serverTimestamp()
-    });
+    try {
+      const response = await fetch(`/api/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('lgf_token')}`
+        },
+        body: JSON.stringify({ status: 'delivered' })
+      });
+      if (!response.ok) throw new Error('Erreur Kernel lors de la livraison');
+    } catch (err) {
+      alert((err as Error).message);
+    }
   };
 
   // Simulate Location Updates when delivering
@@ -42,14 +62,19 @@ export default function DriverApp() {
     if (activeOrders.length === 0) return;
 
     const interval = setInterval(async () => {
-      // Simulate moving around Paris (center: 48.8566, 2.3522)
       const lat = 48.8566 + (Math.random() - 0.5) * 0.01;
       const lng = 2.3522 + (Math.random() - 0.5) * 0.01;
 
       for (const order of activeOrders) {
-        await updateDoc(doc(db, 'orders', order.id), {
-          driverLocation: { lat, lng }
-        });
+        // SECURITY: Secure location update via API
+        fetch('/api/drivers/location', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('lgf_token')}`
+          },
+          body: JSON.stringify({ orderId: order.id, location: { lat, lng } })
+        }).catch(err => console.error('Location update failed:', err));
       }
     }, 5000);
 

@@ -117,11 +117,18 @@ export default function OrderTracking() {
     if (!id) return;
     setIsTipping(true);
     try {
-      await updateDoc(doc(db, 'orders', id), {
-        tip: increment(amount)
+      const response = await fetch(`/api/orders/${id}/tip`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('lgf_token')}`
+        },
+        body: JSON.stringify({ amount })
       });
+      if (!response.ok) throw new Error('Tip failed');
     } catch (err) {
       console.error('Tip Error:', err);
+      alert('Impossible d\'ajouter le pourboire via le Kernel.');
     } finally {
       setIsTipping(false);
     }
