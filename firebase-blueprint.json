@@ -2,13 +2,32 @@
   "entities": {
     "user": {
       "title": "User Profile",
-      "description": "Public and private user data",
+      "description": "Public and private user data, including KYC",
       "type": "object",
       "properties": {
         "name": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "role": { "type": "string", "enum": ["client", "merchant", "driver", "admin"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "available": { "type": "boolean" },
+        "kyc": {
+          "type": "object",
+          "properties": {
+            "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+            "idCardUrl": { "type": "string" },
+            "kbizUrl": { "type": "string" },
+            "insuranceUrl": { "type": "string" },
+            "registrationUrl": { "type": "string" },
+            "driverLicenseUrl": { "type": "string" }
+          }
+        },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" }
+          }
+        }
       },
       "required": ["name", "email", "role"]
     },
@@ -21,7 +40,11 @@
         "ownerId": { "type": "string" },
         "status": { "type": "string", "enum": ["open", "closed"] },
         "category": { "type": "string" },
-        "rating": { "type": "number" }
+        "rating": { "type": "number" },
+        "address": { "type": "string" },
+        "image": { "type": "string" },
+        "description": { "type": "string" },
+        "hours": { "type": "object" }
       },
       "required": ["name", "ownerId", "status"]
     },

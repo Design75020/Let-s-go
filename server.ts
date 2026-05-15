@@ -18,10 +18,17 @@ async function start() {
   const app = express();
   const httpServer = createServer(app);
   
-  // Security Hardening
-  app.use(helmet({
-    contentSecurityPolicy: false, // Vite needs some flexibility in dev; configure properly for prod if needed
-  }));
+  // Request logger
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+  });
+
+  // Security Hardening - Disabled temporarily to debug white screen
+  // app.use(helmet({
+  //   contentSecurityPolicy: false, 
+  //   frameguard: false,
+  // }));
   app.use(compression());
   app.use(logger);
 

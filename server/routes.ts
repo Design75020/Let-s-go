@@ -61,7 +61,7 @@ router.post('/api/ai/optimize-menu', authenticate, async (req, res) => {
     );
     res.json({ advice: result.text });
   } catch (error) {
-    req.log.error(error);
+    (req as any).log.error(error);
     res.status(500).json({ error: 'AI generation failed' });
   }
 });

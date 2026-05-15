@@ -2,16 +2,34 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { motion } from 'framer-motion';
-import { Lock, Mail, Loader2, ShieldCheck, Truck } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Lock, Mail, Loader2, ShieldCheck, Truck, ArrowRight, Globe } from 'lucide-react';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('u6860348073@id.gle');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [devRole, setDevRole] = useState('admin');
   const { loginWithGoogle, loginAsEmail } = useAuth();
   const navigate = useNavigate();
+
+  const authorizedEmails = ['letsgofood26@gmail.com', 'admin@lgf.com', 'u6860348073@id.gle'];
+
+  const handleAuthorizedDirectLogin = async (role: string) => {
+    setLoading(true);
+    try {
+      await loginAsEmail(authorizedEmails.includes(email) ? email : 'u6860348073@id.gle', role);
+      if (role === 'merchant') navigate('/merchant');
+      else if (role === 'driver') navigate('/driver');
+      else if (role === 'admin') navigate('/admin');
+      else navigate('/app');
+    } catch (err) {
+      setError('Erreur d\'accès direct.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleGoogleLogin = async (role: string) => {
     setLoading(true);
@@ -27,7 +45,7 @@ export default function Login() {
       if (err.message.includes('popup-closed-by-user') || err.message.includes('cancelled-by-user')) {
         setError('Authentification annulée.');
       } else {
-        setError('Google Auth restreint. Utilisez l\'accès direct avec letsgofood26@gmail.com.');
+        setError('Google Auth restreint. Utilisez l\'accès direct avec votre email ID.');
       }
     } finally {
       setLoading(false);
@@ -36,104 +54,126 @@ export default function Login() {
 
   const handleDevLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email === 'letsgofood26@gmail.com' || email === 'admin@lgf.com') {
-      setLoading(true);
-      try {
-        await loginAsEmail(email, 'admin'); 
-        navigate('/admin');
-      } catch (err) {
-        setError('Erreur bypass.');
-      } finally {
-        setLoading(false);
-      }
+    if (authorizedEmails.includes(email)) {
+      handleAuthorizedDirectLogin(devRole);
     } else {
       setError('Email non autorisé pour l\'accès direct.');
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#08090a] flex items-center justify-center p-6 relative overflow-hidden">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#ff385c]/5 rounded-full blur-[100px]" />
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 relative overflow-hidden font-sans">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-[#ff385c]/10 to-transparent blur-[120px] rounded-full" />
       
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass w-full max-w-md p-12 rounded-[2.5rem]"
+        className="bg-white/70 backdrop-blur-3xl w-full max-w-md p-10 md:p-12 rounded-[2.5rem] border border-white shadow-2xl relative z-10"
       >
         <div className="text-center mb-10">
-          <div className="w-16 h-16 bg-[#ff385c]/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-[#ff385c]/20">
-            <Lock className="w-8 h-8 text-[#ff385c]" />
+          <div className="w-16 h-16 bg-[#ff385c] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-[#ff385c]/30 rotate-3">
+            <Globe className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-black italic tracking-tighter">PORTAIL ECO-SYSTEM</h1>
-          <p className="text-white/30 text-[10px] font-black tracking-[0.3em] uppercase mt-2">LetsGoFood Unified</p>
+          <h1 className="text-3xl font-black italic tracking-tighter text-slate-900 uppercase">PORTAIL ECO-SYSTEM</h1>
+          <p className="text-slate-400 text-[10px] font-black tracking-[0.3em] uppercase mt-2">LetsGoFood Unified</p>
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl text-xs font-bold mb-8 text-center ring-1 ring-red-500/30">
+          <div className="bg-red-50 border border-red-100 text-red-500 p-4 rounded-xl text-[10px] font-black uppercase tracking-widest mb-8 text-center animate-shake">
             {error}
           </div>
         )}
 
-        <div className="space-y-4">
-          <button 
-            onClick={() => handleGoogleLogin('merchant')}
-            disabled={loading}
-            className="w-full h-14 bg-white text-black font-black italic rounded-2xl flex items-center justify-center gap-3 hover:bg-white/90 disabled:opacity-50 transition-all font-sans"
-          >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
-            ESPACE RESTAURATEUR
-          </button>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-4">
+            <button 
+              type="button"
+              onClick={() => handleAuthorizedDirectLogin('admin')}
+              disabled={loading}
+              className="w-full group relative h-24 bg-slate-900 text-white rounded-[2rem] flex items-center justify-between px-10 hover:scale-[1.02] transition-all shadow-xl shadow-slate-900/10"
+            >
+              <div className="text-left">
+                <span className="block text-[8px] font-black uppercase tracking-[0.4em] opacity-40 italic mb-1">COMMAND_STATION</span>
+                <span className="block text-2xl font-black italic tracking-tighter uppercase">ADMIN DASHBOARD</span>
+              </div>
+              {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : <ShieldCheck className="w-10 h-10 group-hover:rotate-12 transition-transform text-[#ff385c]" />}
+            </button>
 
-          <button 
-            onClick={() => handleGoogleLogin('driver')}
-            disabled={loading}
-            className="w-full h-14 bg-white/5 border border-white/10 text-white font-black italic rounded-2xl flex items-center justify-center gap-3 hover:bg-white/10 disabled:opacity-50 transition-all font-sans"
-          >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Truck className="w-5 h-5" />}
-            PORTAIL LIVREUR
-          </button>
-
-          <button 
-            onClick={() => handleGoogleLogin('client')}
-            disabled={loading}
-            className="w-full h-14 bg-white/5 border border-white/10 text-white/50 font-bold rounded-2xl flex items-center justify-center gap-3 hover:bg-white/10 disabled:opacity-50 transition-all font-sans text-xs"
-          >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Mail className="w-5 h-5" />}
-            ACCÈS CLIENT
-          </button>
-
-          <div className="pt-4 border-t border-white/5 mt-4">
-            <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] text-center mb-4">Accès direct (Tester/Admin)</p>
-            <div className="flex gap-2">
-              <input 
-                type="email" 
-                placeholder="Email autorisé"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-[#ff385c]/50 transition-all"
-              />
+            <div className="flex gap-4">
               <button 
-                onClick={handleDevLogin}
-                className="px-4 py-2 bg-white/10 rounded-xl text-[10px] font-black uppercase hover:bg-white/20 transition-all"
+                type="button"
+                onClick={() => authorizedEmails.includes(email) ? handleAuthorizedDirectLogin('merchant') : handleGoogleLogin('merchant')}
+                disabled={loading}
+                className="flex-1 h-32 bg-white border border-slate-100 text-slate-900 rounded-[2rem] flex flex-col items-center justify-center gap-4 hover:border-[#ff385c]/30 transition-all group shadow-sm hover:shadow-xl"
               >
-                GO
+                <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center group-hover:bg-[#ff385c] transition-colors">
+                  <ShieldCheck className="w-6 h-6 text-slate-400 group-hover:text-white transition-colors" />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover:text-slate-900 transition-colors">MERCHANT</span>
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => authorizedEmails.includes(email) ? handleAuthorizedDirectLogin('driver') : handleGoogleLogin('driver')}
+                disabled={loading}
+                className="flex-1 h-32 bg-white border border-slate-100 text-slate-900 rounded-[2rem] flex flex-col items-center justify-center gap-4 hover:border-[#ff385c]/30 transition-all group shadow-sm hover:shadow-xl"
+              >
+                <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center group-hover:bg-[#ff385c] transition-colors">
+                  <Truck className="w-6 h-6 text-slate-400 group-hover:text-white transition-colors" />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover:text-slate-900 transition-colors">DISPATCH</span>
               </button>
             </div>
+
+            <button 
+              type="button"
+              onClick={() => authorizedEmails.includes(email) ? handleAuthorizedDirectLogin('client') : handleGoogleLogin('client')}
+              disabled={loading}
+              className="w-full h-16 bg-slate-50 border border-slate-100 text-slate-400 rounded-2xl flex items-center justify-center gap-4 hover:border-[#ff385c]/30 hover:text-slate-900 transition-all group"
+            >
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/40 animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-[0.4em] italic leading-none">Accès Marketplace Client</span>
+              <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-2 transition-all text-[#ff385c]" />
+            </button>
           </div>
 
-          <button 
-            onClick={() => handleGoogleLogin('admin')}
-            disabled={loading}
-            className="w-full mt-4 text-[10px] font-black text-white/20 hover:text-white/40 tracking-widest uppercase transition-all"
-          >
-             {loading ? 'Connexion en cours...' : 'Accès SaaS Control Tower (Admin)'}
-          </button>
+          <form onSubmit={handleDevLogin} className="pt-6 border-t border-slate-100 space-y-4">
+            <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.3em] text-center mb-2">Accès direct développement</p>
+            <div className="space-y-2">
+              <input 
+                type="email" 
+                placeholder="Votre email ID"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl px-5 py-3 text-xs outline-none focus:border-[#ff385c]/40 transition-all shadow-sm"
+              />
+              <div className="flex gap-2">
+                <select 
+                  value={devRole}
+                  onChange={(e) => setDevRole(e.target.value)}
+                  className="flex-1 bg-white border border-slate-200 rounded-xl px-5 py-3 text-[10px] font-black uppercase outline-none focus:border-[#ff385c]/40 transition-all appearance-none text-slate-500 cursor-pointer"
+                >
+                  <option value="admin">Admin</option>
+                  <option value="merchant">Merchant</option>
+                  <option value="driver">Driver</option>
+                  <option value="client">Client</option>
+                </select>
+                <button 
+                  type="submit"
+                  disabled={loading}
+                  className="px-8 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase hover:bg-slate-800 transition-all disabled:opacity-50 shadow-lg shadow-slate-900/10"
+                >
+                  ENTRER
+                </button>
+              </div>
+            </div>
+          </form>
         </div>
 
-
-        <div className="mt-12 flex items-center justify-center gap-2 text-white/20">
-          <ShieldCheck className="w-3 h-3" />
-          <span className="text-[10px] font-black tracking-widest">TLS 1.3 ENCRYPTED</span>
+        <div className="mt-12 flex items-center justify-center gap-3 text-slate-300">
+          <ShieldCheck className="w-3.5 h-3.5" />
+          <span className="text-[9px] font-black tracking-[0.2em] uppercase">Security: TLS 1.3 Active</span>
         </div>
       </motion.div>
     </div>
