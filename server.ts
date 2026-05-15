@@ -8,7 +8,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import apiRoutes from './serveur/routes';
+import apiRoutes from './server/routes';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -58,11 +58,15 @@ async function start() {
 
   // Vite
   if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
+    try {
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: 'spa',
+      });
+      app.use(vite.middlewares);
+    } catch (e) {
+      console.error("Vite server initialization error:", e);
+    }
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
@@ -82,8 +86,11 @@ async function start() {
 
   const PORT = 3000;
   httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 LetsGoFood Platform Hardened & Running on port ${PORT}`);
+    console.log(`🚀 LetsGoFood Platform Hardened & Running on http://localhost:${PORT}`);
   });
 }
 
-start();
+start().catch(err => {
+  console.error("Critical server startup failure:", err);
+  process.exit(1);
+});
