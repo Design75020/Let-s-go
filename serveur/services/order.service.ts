@@ -34,10 +34,10 @@ export class OrderService {
 
     // Add delivery fee (fixed for demo)
     const subtotal = calculatedTotal;
-    calculatedTotal += 2.50;
+    const finalTotal = subtotal + 2.50;
 
-    if (Math.abs(subtotal - orderData.total) > 0.01) {
-      throw new Error(`Price manipulation detected: expected ${subtotal}, got ${orderData.total}`);
+    if (Math.abs(finalTotal - orderData.total) > 0.01) {
+      throw new Error(`Price manipulation detected: expected ${finalTotal}, got ${orderData.total}`);
     }
 
     return await adminDb.collection('orders').add({

@@ -38,7 +38,7 @@ async function runLoadTest(concurrentUsers: number) {
           items: [
             { id: 'item-1', name: 'Premium Burger', price: 15.00, quantity: 1 }
           ],
-          total: 15.00 // This should be 17.50 with delivery fee if validated by server
+          total: 17.50 // Includes 2.50 delivery fee
         })
       });
 
