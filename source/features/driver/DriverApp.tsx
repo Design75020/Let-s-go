@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Truck, MapPin, Navigation, CheckCircle, Package, Clock, LogOut, Loader2 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { db } from '../lib/firebase';
+import { useAuth } from '../auth/AuthContext';
+import { db } from '../../lib/firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function DriverApp() {

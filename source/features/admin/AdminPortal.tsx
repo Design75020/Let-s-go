@@ -13,8 +13,8 @@ import {
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell 
 } from 'recharts';
 import KYCManager from './KYCManager';
-import { useAuth } from '../context/AuthContext';
-import { db } from '../lib/firebase';
+import { useAuth } from '../auth/AuthContext';
+import { db } from '../../lib/firebase';
 import { collection, query, onSnapshot, limit, orderBy } from 'firebase/firestore';
 
 const COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444'];

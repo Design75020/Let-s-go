@@ -1,8 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut, signInWithPopup } from 'firebase/auth';
-import { auth, googleProvider, getUserProfile, createUserProfile } from '../lib/firebase';
-import { syncAuth } from '../services/authApi';
+import { auth, googleProvider, getUserProfile, createUserProfile } from '../../lib/firebase';
+import { syncAuth } from './authApi';
 
 interface AuthContextType {
   user: any;
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loginWithGoogle = async (role: string) => {
     const result = await signInWithPopup(auth, googleProvider);
-    
+
     let profile = await getUserProfile(result.user.uid);
     if (!profile) {
       // New users get the requested role (restricted by backend/rules later)

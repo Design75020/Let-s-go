@@ -22,7 +22,7 @@ import {
   useMap,
   useMapsLibrary
 } from '@vis.gl/react-google-maps';
-import { db } from '../lib/firebase';
+import { db } from '../../lib/firebase';
 import { doc, onSnapshot, updateDoc, increment } from 'firebase/firestore';
 
 // Directions Component Implementation (Refactored to use Routes API v3)

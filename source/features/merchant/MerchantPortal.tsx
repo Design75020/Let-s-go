@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutDashboard, Utensils, ClipboardList, Settings, LogOut, Plus, Search, Edit2, Trash2, Sparkles, Loader2, CheckCircle, XCircle } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { db } from '../lib/firebase';
+import { useAuth } from '../auth/AuthContext';
+import { db } from '../../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { optimizeMenuPrices } from '../services/aiService';
+import { optimizeMenuPrices } from '../../services/aiService';
 
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, 
