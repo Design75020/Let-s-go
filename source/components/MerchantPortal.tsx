@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutDashboard, Utensils, ClipboardList, Settings, LogOut, Plus, Search, Edit2, Trash2, Sparkles, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../lib/firebase';
@@ -163,11 +163,17 @@ function SettingsView({ restoData, user }: { restoData: any, user: any }) {
     if (!user?.uid) return;
     const newStatus = restoData?.status === 'open' ? 'closed' : 'open';
     try {
-      await updateDoc(doc(db, 'restaurants', user.uid), {
-        status: newStatus
+      const response = await fetch('/api/merchant/restaurant/status', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('lgf_token')}`
+        },
+        body: JSON.stringify({ status: newStatus })
       });
+      if (!response.ok) throw new Error('Impossible de changer le statut');
     } catch (error) {
-      console.error(error);
+      alert((error as Error).message);
     }
   };
 
@@ -352,19 +358,36 @@ function MenuManager({ restaurantId }: { restaurantId?: string }) {
     if (!restaurantId) return;
     const name = prompt("Nom du produit ?") || 'Nouveau Produit';
     const price = parseFloat(prompt("Prix ?") || "10");
-    await addDoc(collection(db, 'restaurants', restaurantId, 'menuItems'), {
-      name,
-      price,
-      category: 'Gourmet',
-      available: true,
-      createdAt: serverTimestamp()
-    });
+
+    try {
+      const response = await fetch('/api/merchant/menu', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('lgf_token')}`
+        },
+        body: JSON.stringify({ name, price, category: 'Gourmet', available: true })
+      });
+      if (!response.ok) throw new Error('Action refusée');
+    } catch (e) {
+      alert((e as Error).message);
+    }
   };
 
   const deleteItem = async (itemId: string) => {
     if (!restaurantId) return;
     if (confirm("Supprimer cet article ?")) {
-      await deleteDoc(doc(db, 'restaurants', restaurantId, 'menuItems', itemId));
+      try {
+        const response = await fetch(`/api/merchant/menu/${itemId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('lgf_token')}`
+          }
+        });
+        if (!response.ok) throw new Error('Action refusée');
+      } catch (e) {
+        alert((e as Error).message);
+      }
     }
   };
 
@@ -372,10 +395,14 @@ function MenuManager({ restaurantId }: { restaurantId?: string }) {
     const newName = prompt("Nouveau nom :", item.name);
     const newPrice = prompt("Nouveau prix :", item.price.toString());
     if (newName && newPrice && restaurantId) {
-      updateDoc(doc(db, 'restaurants', restaurantId, 'menuItems', item.id), {
-        name: newName,
-        price: parseFloat(newPrice)
-      });
+      fetch(`/api/merchant/menu/${item.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('lgf_token')}`
+        },
+        body: JSON.stringify({ name: newName, price: parseFloat(newPrice) })
+      }).catch(e => alert(e.message));
     }
   };
 
@@ -504,10 +531,20 @@ function OrderMonitor({ restaurantId }: { restaurantId?: string }) {
   }, [restaurantId]);
 
   const updateStatus = async (orderId: string, status: string) => {
-    await updateDoc(doc(db, 'orders', orderId), { 
-      status,
-      updatedAt: serverTimestamp()
-    });
+    // SECURITY: Status updates move to backend for validation
+    try {
+      const response = await fetch(`/api/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('lgf_token')}`
+        },
+        body: JSON.stringify({ status })
+      });
+      if (!response.ok) throw new Error('Action refusée par le Kernel');
+    } catch (err) {
+      alert((err as Error).message);
+    }
   };
 
   return (

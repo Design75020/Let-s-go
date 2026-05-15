@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ShoppingBag, MapPin, Star, Clock, ChevronLeft, Plus, Minus, CheckCircle2, LogOut, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
@@ -62,24 +62,35 @@ export default function ClientStore() {
     if (!user || basketArray.length === 0 || !selectedResto) return;
     setOrderStatus('ordering');
     try {
-      const docRef = await addDoc(collection(db, 'orders'), {
-        clientId: user.uid,
-        clientName: user.name,
-        restaurantId: selectedResto.id,
-        restaurantName: selectedResto.name,
-        items: basketArray,
-        total: totalPrice,
-        status: 'pending',
-        createdAt: serverTimestamp(),
+      // SECURITY: Order placement moved to backend API for validation and RBAC
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('lgf_token')}`
+        },
+        body: JSON.stringify({
+          clientId: user.uid,
+          clientName: user.name,
+          restaurantId: selectedResto.id,
+          restaurantName: selectedResto.name,
+          items: basketArray,
+          total: totalPrice
+        })
       });
+
+      if (!response.ok) throw new Error('Erreur Kernel lors de la commande');
+      const { id } = await response.json();
+
       setBasket({});
       setOrderStatus('success');
       setTimeout(() => {
-        navigate(`/tracking/${docRef.id}`);
+        navigate(`/tracking/${id}`);
       }, 2000);
     } catch (err) {
       console.error(err);
       setOrderStatus('idle');
+      alert("Erreur lors de la validation : " + (err as Error).message);
     }
   };
 
@@ -313,7 +324,11 @@ export default function ClientStore() {
               className="relative p-2 md:p-3 bg-white/5 border border-white/10 rounded-xl md:rounded-2xl hover:bg-white/10 transition-colors"
             >
               <ShoppingBag className="w-5 h-5" />
-              {basket.length > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#ff385c] text-[8px] font-black flex items-center justify-center rounded-full border-2 border-[#08090a]">{basket.length}</span>}
+              {Object.keys(basket).length > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#ff385c] text-[8px] font-black flex items-center justify-center rounded-full border-2 border-[#08090a]">
+                  {Object.keys(basket).length}
+                </span>
+              )}
             </button>
             <button 
               className="p-2 md:p-3 bg-white/5 border border-white/10 rounded-xl md:rounded-2xl hover:bg-white/10 transition-colors"

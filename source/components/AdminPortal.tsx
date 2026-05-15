@@ -6,12 +6,13 @@ import {
   Settings, CreditCard, Map, Percent, Scale, Package, 
   Bell, Search, Calendar, ChevronDown, MoreVertical, 
   ArrowUpRight, ArrowDownRight, Clock, AlertTriangle, 
-  CheckCircle2, XCircle, Globe, LogOut, Edit2
+  CheckCircle2, XCircle, Globe, LogOut, Edit2, ShieldCheck
 } from 'lucide-react';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell 
 } from 'recharts';
+import KYCManager from './KYCManager';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, onSnapshot, limit, orderBy } from 'firebase/firestore';
@@ -72,6 +73,7 @@ export default function AdminPortal() {
               { label: 'Plateforme Client (Live)', icon: Globe },
               { label: 'Merchant Interface', icon: Utensils },
               { label: 'Driver Dispatch', icon: Truck },
+              { label: 'KYC & Conformité', icon: ShieldCheck },
               { label: 'SaaS Control Tower', icon: Settings },
               { label: 'CRM & Sales', icon: Wallet },
               { label: 'Acquisition (Marketing)', icon: Megaphone },
@@ -208,6 +210,8 @@ export default function AdminPortal() {
               <AppsCore />
             ) : activeTab === 'Merchant Interface' ? (
               <MerchantInterface />
+            ) : activeTab === 'KYC & Conformité' ? (
+              <KYCManager />
             ) : (
               <div className="p-12 text-center bg-white border border-slate-200 rounded-[2.5rem] shadow-sm">
                  <Globe className="w-12 h-12 text-slate-200 mx-auto mb-6" />
