@@ -77,7 +77,7 @@ async function start() {
 
   // Global Error Handler
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    req.log.error(err);
+    (req as any).log.error(err);
     res.status(500).json({ 
       error: 'Internal Server Error',
       message: process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : err.message
