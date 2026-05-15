@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { LayoutDashboard, Utensils, ClipboardList, Settings, LogOut, Plus, Search, Edit2, Trash2, Sparkles, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { optimizeMenuPrices } from '../services/aiService';
 
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, 
@@ -222,6 +223,23 @@ function SettingsView({ restoData, user }: { restoData: any, user: any }) {
               </button>
             </div>
           </div>
+
+          {restoData?.aiMenuAdvice && (
+            <div className="mt-8 p-6 bg-[#ff385c]/5 border border-[#ff385c]/10 rounded-2xl">
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="w-4 h-4 text-[#ff385c]" />
+                <h5 className="text-[10px] font-black uppercase tracking-widest text-[#ff385c]">Dernière Analyse IA</h5>
+              </div>
+              <p className="text-xs text-white/60 italic leading-relaxed">
+                {restoData.aiMenuAdvice}
+              </p>
+              {restoData.aiAdviceAt && (
+                <p className="text-[9px] text-white/20 mt-3 uppercase tracking-tighter">
+                  Généré le {new Date(restoData.aiAdviceAt.seconds * 1000).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+          )}
           
           <div className="mt-8 pt-8 border-t border-white/5">
             <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-2">Compte Propriétaire</p>
@@ -287,6 +305,7 @@ function MenuManager({ restaurantId }: { restaurantId?: string }) {
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiAdvice, setAiAdvice] = useState('');
+  const [aiError, setAiError] = useState('');
   const [editingItem, setEditingItem] = useState<any>(null);
 
   useEffect(() => {
@@ -300,14 +319,31 @@ function MenuManager({ restaurantId }: { restaurantId?: string }) {
   }, [restaurantId]);
 
   const getAiAdvice = async () => {
+    if (!restaurantId || items.length === 0) {
+      setAiError("Ajoutez des articles à votre menu avant de demander une analyse.");
+      return;
+    }
     setAiLoading(true);
+    setAiError('');
+    setAiAdvice('');
+    
     try {
-      setTimeout(() => {
-         setAiAdvice("Basé sur les données du marketplace, vos prix sont 5% inférieurs à la concurrence directe. Une augmentation légère pourrait booster vos marges sans affecter le volume.");
-         setAiLoading(false);
-      }, 1500);
-    } catch (e) {
-      setAiAdvice("IA indisponible pour le moment.");
+      const advice = await optimizeMenuPrices(items.map(item => ({
+        name: item.name,
+        price: item.price,
+        category: item.category
+      })));
+      
+      setAiAdvice(advice);
+
+      // Store in merchant settings
+      await updateDoc(doc(db, 'restaurants', restaurantId), {
+        aiMenuAdvice: advice,
+        aiAdviceAt: serverTimestamp()
+      });
+    } catch (e: any) {
+      setAiError(e.message || "Impossible de contacter le Kernel IA.");
+    } finally {
       setAiLoading(false);
     }
   };
@@ -368,9 +404,10 @@ function MenuManager({ restaurantId }: { restaurantId?: string }) {
         </div>
       </div>
 
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {aiAdvice && (
           <motion.div 
+            key="advice"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -381,6 +418,23 @@ function MenuManager({ restaurantId }: { restaurantId?: string }) {
               <Sparkles className="w-4 h-4" /> GEMINI CORE
             </h4>
             <div className="text-white/60 text-xs md:text-sm leading-relaxed italic">{aiAdvice}</div>
+          </motion.div>
+        )}
+
+        {aiError && (
+          <motion.div 
+            key="error"
+            initial={{ height: 0, opacity: 0, scale: 0.95 }}
+            animate={{ height: 'auto', opacity: 1, scale: 1 }}
+            exit={{ height: 0, opacity: 0, scale: 0.95 }}
+            className="mb-8 md:mb-12 p-6 md:p-8 bg-red-500/10 border border-red-500/20 rounded-[1.5rem] md:rounded-[2rem] relative flex items-center gap-4"
+          >
+            <XCircle className="w-6 h-6 text-red-500 flex-shrink-0" />
+            <div className="flex-1">
+              <h4 className="text-red-500 font-black italic uppercase text-[10px] tracking-widest mb-1">Erreur Kernel</h4>
+              <p className="text-red-500/80 text-xs font-bold">{aiError}</p>
+            </div>
+            <button onClick={() => setAiError('')} className="text-red-500/40 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
           </motion.div>
         )}
       </AnimatePresence>

@@ -25,46 +25,54 @@ import {
 import { db } from '../lib/firebase';
 import { doc, onSnapshot, updateDoc, increment } from 'firebase/firestore';
 
-// Directions Component Implementation
-function Directions({ driverLocation, destination }: { driverLocation: any, destination: any }) {
+// Directions Component Implementation (Refactored to use Routes API v3)
+function RouteDisplay({ origin, destination }: {
+  origin: google.maps.LatLngLiteral;
+  destination: google.maps.LatLngLiteral;
+}) {
   const map = useMap();
-  const routesLibrary = useMapsLibrary('routes');
-  const [directionsService, setDirectionsService] = useState<google.maps.DirectionsService>();
-  const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer>();
+  const routesLib = useMapsLibrary('routes');
+  const polylinesRef = React.useRef<google.maps.Polyline[]>([]);
 
   useEffect(() => {
-    if (!routesLibrary || !map) return;
-    setDirectionsService(new routesLibrary.DirectionsService());
-    setDirectionsRenderer(new routesLibrary.DirectionsRenderer({
-      map,
-      suppressMarkers: true,
-      polylineOptions: {
-        strokeColor: '#ff385c',
-        strokeWeight: 5,
-        strokeOpacity: 0.8
-      }
-    }));
-  }, [routesLibrary, map]);
+    if (!routesLib || !map || !origin || !destination) return;
+    
+    // Clear previous route
+    polylinesRef.current.forEach(p => p.setMap(null));
 
-  useEffect(() => {
-    if (!directionsService || !directionsRenderer || !driverLocation) return;
-    const travelMode = (window as any).google?.maps?.TravelMode?.DRIVING || 'DRIVING';
-
-    directionsService.route({
-      origin: driverLocation,
+    routesLib.Route.computeRoutes({
+      origin: origin,
       destination: destination,
-      travelMode: travelMode as any
-    }).then(response => {
-      directionsRenderer.setDirections(response);
-    }).catch(err => {
-      console.error('Directions request failed:', err);
-    });
-  }, [directionsService, directionsRenderer, driverLocation, destination]);
+      travelMode: 'DRIVING',
+      fields: ['path', 'viewport'],
+    }).then(({ routes }) => {
+      if (routes?.[0]) {
+        const newPolylines = routes[0].createPolylines();
+        newPolylines.forEach(p => {
+          p.setOptions({
+            strokeColor: '#ff385c',
+            strokeWeight: 6,
+            strokeOpacity: 0.8,
+            clickable: false
+          });
+          p.setMap(map);
+        });
+        polylinesRef.current = newPolylines;
+        
+        // Initial fit bounds only
+        if (routes[0].viewport) {
+          map.fitBounds(routes[0].viewport, 80);
+        }
+      }
+    }).catch(err => console.error('Routes API Error:', err));
+
+    return () => polylinesRef.current.forEach(p => p.setMap(null));
+  }, [routesLib, map, origin, destination]);
 
   return null;
 }
 
-const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || '';
+const API_KEY = process.env.GOOGLE_MAPS_PLATFORM_KEY || '';
 
 const statuses = [
   { id: 'accepted', label: 'Commande acceptée', icon: CheckCircle2, color: 'text-blue-400' },
@@ -224,6 +232,7 @@ export default function OrderTracking() {
                       defaultCenter={driverLocation || userLocation}
                       defaultZoom={15}
                       mapId="LGF_TRACKER_DARK"
+                      internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
                       options={{
                         styles: mapStyle,
                         disableDefaultUI: true,
@@ -233,8 +242,8 @@ export default function OrderTracking() {
                       style={{ width: '100%', height: '100%' }}
                     >
                     {driverLocation && (
-                      <Directions 
-                        driverLocation={driverLocation} 
+                      <RouteDisplay 
+                        origin={driverLocation} 
                         destination={userLocation} 
                       />
                     )}

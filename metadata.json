@@ -1,6 +1,6 @@
 {
-  "name": "letsgofood-platform",
-  "description": "Plateforme unifiée 6-en-1 : Livraison Client, Merchant Portal, Driver Dispatch, SaaS et CRM.",
+  "name": "LetsGoFood Ecosystem",
+  "description": "Plateforme unifiée 6-en-1 : Livraison Client, Merchant Portal, Driver Dispatch, SaaS Control Tower, CRM et Supervision Kernel.",
   "requestFramePermissions": ["geolocation"],
   "majorCapabilities": []
 }

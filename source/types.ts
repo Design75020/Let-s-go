@@ -1,4 +1,4 @@
-export type DomainType = 'landing' | 'app' | 'merchant' | 'driver' | 'admin' | 'crm' | 'saas';
+export type DomainType = 'landing' | 'app' | 'merchant' | 'driver' | 'admin' | 'crm' | 'saas' | 'agent';
 
 export interface User {
   uid: string;

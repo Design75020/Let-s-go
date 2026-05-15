@@ -1,6 +1,7 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import { AuthProvider } from './context/AuthContext';
 import LandingPage from './components/LandingPage';
 import Login from './components/Login';
@@ -11,6 +12,16 @@ import ClientStore from './components/ClientStore';
 import OrderTracking from './components/OrderTracking';
 import AdminPortal from './components/AdminPortal';
 import DevLaunchpad from './components/DevLaunchpad';
+import DevAgentDashboard from './components/DevAgentDashboard';
+
+const LoadingScreen = () => (
+  <div className="min-h-screen bg-[#08090a] flex items-center justify-center">
+    <div className="flex flex-col items-center gap-4">
+      <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
+      <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Initializing Kernel...</p>
+    </div>
+  </div>
+);
 
 const UnauthorizedDomain = () => (
   <div className="min-h-screen bg-[#08090a] text-white flex flex-col items-center justify-center p-6 text-center">
@@ -26,11 +37,19 @@ const UnauthorizedDomain = () => (
 );
 
 export default function App() {
+  const [isLoading, setIsLoading] = useState(true);
   const hostname = window.location.hostname;
   const searchParams = new URLSearchParams(window.location.search);
   const viewParam = searchParams.get('view');
 
+  useEffect(() => {
+    // Artificial small delay to ensure determination is clean
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
+
   const AppContent = useMemo(() => {
+    if (isLoading) return <LoadingScreen />;
     // If we have a ?view=Param, override hostname logic for development/preview
     if (viewParam) {
       switch (viewParam) {
@@ -39,6 +58,7 @@ export default function App() {
         case 'merchant': return <ProtectedRoute><MerchantPortal /></ProtectedRoute>;
         case 'driver': return <ProtectedRoute><DriverApp /></ProtectedRoute>;
         case 'admin': return <ProtectedRoute><AdminPortal /></ProtectedRoute>;
+        case 'agent': return <ProtectedRoute><DevAgentDashboard /></ProtectedRoute>;
         case 'dev': return <DevLaunchpad />;
       }
     }
@@ -92,6 +112,7 @@ export default function App() {
             <Route path="/merchant/*" element={<ProtectedRoute><MerchantPortal /></ProtectedRoute>} />
             <Route path="/driver/*" element={<ProtectedRoute><DriverApp /></ProtectedRoute>} />
             <Route path="/admin/*" element={<ProtectedRoute><AdminPortal /></ProtectedRoute>} />
+            <Route path="/agent" element={<ProtectedRoute><DevAgentDashboard /></ProtectedRoute>} />
             <Route path="/dev" element={<DevLaunchpad />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

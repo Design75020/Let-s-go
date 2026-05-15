@@ -17,7 +17,8 @@ export const navigateToDomain = (domain: DomainType, navigate?: any) => {
       driver: 'driver',
       admin: 'admin',
       crm: 'crm',
-      saas: 'saas'
+      saas: 'saas',
+      agent: 'agent'
     };
     window.location.href = `https://${subdomainMap[domain]}.letsgofood.fr`;
     return;

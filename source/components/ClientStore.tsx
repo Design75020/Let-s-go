@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Search, ShoppingBag, MapPin, Star, Clock, ChevronLeft, Plus, Minus, CheckCircle2, LogOut, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
@@ -139,18 +139,41 @@ export default function ClientStore() {
                       <div className="flex items-center gap-4">
                         {basket[item.id] && (
                           <div className="flex items-center gap-3 bg-white/5 rounded-2xl p-1 border border-white/10">
-                            <button onClick={() => removeFromBasket(item.id)} className="p-2 hover:bg-white/10 rounded-xl transition-colors"><Minus className="w-4 h-4" /></button>
-                            <span className="font-black italic text-sm w-4 text-center">{basket[item.id].quantity}</span>
-                            <button onClick={() => addToBasket(item)} className="p-2 hover:bg-white/10 rounded-xl transition-colors"><Plus className="w-4 h-4" /></button>
+                            <motion.button 
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => removeFromBasket(item.id)} 
+                              className="p-2 hover:bg-white/10 rounded-xl transition-colors"
+                            >
+                              <Minus className="w-4 h-4" />
+                            </motion.button>
+                            <motion.span 
+                              key={basket[item.id].quantity}
+                              initial={{ scale: 1.2, color: "#ff385c" }}
+                              animate={{ scale: 1, color: "#ffffff" }}
+                              className="font-black italic text-sm w-4 text-center inline-block"
+                            >
+                              {basket[item.id].quantity}
+                            </motion.span>
+                            <motion.button 
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => addToBasket(item)} 
+                              className="p-2 hover:bg-white/10 rounded-xl transition-colors"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </motion.button>
                           </div>
                         )}
                         {!basket[item.id] && (
-                          <button 
+                          <motion.button 
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={() => addToBasket(item)}
                             className="p-3 md:p-4 bg-white/5 rounded-2xl hover:bg-[#ff385c] hover:text-white transition-all shadow-xl flex-shrink-0"
                           >
                             <Plus className="w-5 h-5 md:w-6 md:h-6" />
-                          </button>
+                          </motion.button>
                         )}
                       </div>
                     </div>
@@ -173,15 +196,24 @@ export default function ClientStore() {
               </h3>
               
               <div className="space-y-6 mb-8 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
-                {basketArray.map((item: any) => (
-                  <div key={item.id} className="flex justify-between items-start">
-                    <div>
-                      <p className="font-bold text-sm tracking-tight">{item.name}</p>
-                      <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mt-1">{item.quantity}x {item.price?.toFixed(2)}€</p>
-                    </div>
-                    <span className="text-sm font-black italic">{( (item.price || 0) * (item.quantity || 0) ).toFixed(2)}€</span>
-                  </div>
-                ))}
+                <AnimatePresence initial={false}>
+                  {basketArray.map((item: any) => (
+                    <motion.div 
+                      key={item.id} 
+                      layout
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      className="flex justify-between items-start"
+                    >
+                      <div>
+                        <p className="font-bold text-sm tracking-tight">{item.name}</p>
+                        <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mt-1">{item.quantity}x {item.price?.toFixed(2)}€</p>
+                      </div>
+                      <span className="text-sm font-black italic">{( (item.price || 0) * (item.quantity || 0) ).toFixed(2)}€</span>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
                 {basketArray.length === 0 && (
                   <div className="text-center py-12">
                     <p className="text-white/20 text-xs font-black uppercase tracking-widest italic">Votre panier attend d'être rempli</p>
@@ -204,23 +236,31 @@ export default function ClientStore() {
                 </div>
               </div>
 
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={placeOrder}
                 disabled={basketArray.length === 0 || orderStatus !== 'idle'}
-                className="w-full py-5 bg-white text-black font-black italic rounded-2xl hover:scale-[1.02] active:scale-95 transition-all shadow-2xl shadow-white/5 disabled:opacity-20 disabled:scale-100"
+                className="w-full py-5 bg-white text-black font-black italic rounded-2xl shadow-2xl shadow-white/5 disabled:opacity-20 disabled:scale-100 transition-opacity"
               >
                 {orderStatus === 'ordering' ? 'TRAITEMENT...' : 'VALIDER LA COMMANDE'}
-              </button>
+              </motion.button>
 
               <AnimatePresence>
                 {orderStatus === 'success' && (
                   <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
+                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
                     className="mt-6 p-4 bg-green-500/10 border border-green-500/20 rounded-2xl flex items-center gap-3 text-green-500 text-[10px] font-black uppercase tracking-widest"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", damping: 12, stiffness: 200, delay: 0.2 }}
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                    </motion.div>
                     Commande transmise au Kernel
                   </motion.div>
                 )}

@@ -63,6 +63,15 @@ const MODULES = [
     icon: ShieldAlert,
     color: 'red',
     tag: 'Admin'
+  },
+  {
+    id: 'agent',
+    title: 'Autonomous Dev Agent',
+    subtitle: 'V10 Kernel Intel',
+    description: 'Système IA autonome pour l\'analyse de repo, la détection de dette technique et l\'implémentation automatique de features.',
+    icon: Terminal,
+    color: 'emerald',
+    tag: 'AI Agent'
   }
 ];
 
