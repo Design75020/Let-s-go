@@ -10,14 +10,15 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
     function getUserRole() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role; }
+    function isAdmin() { return isSignedIn() && getUserRole() == 'admin'; }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
 
     // USERS
     match /users/{userId} {
       // Users can only read their own profile
-      allow get: if isOwner(userId);
-      allow list: if false;
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
 
       // Initial creation restricted, roles should ideally be managed by backend
       allow create: if isOwner(userId) &&
@@ -56,12 +57,21 @@ service cloud.firestore {
       allow get: if isSignedIn() && (
         resource.data.clientId == request.auth.uid || 
         resource.data.driverId == request.auth.uid ||
-        get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid
+        get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid ||
+        isAdmin()
       );
 
-      // LISTING IS FORBIDDEN from frontend to prevent data scraping.
-      // Frontends should query specific documents or use backend aggregations.
-      allow list: if false;
+      // LISTING: Restrict to role-specific filters to prevent scraping
+      allow list: if isSignedIn() && (
+        request.query.limit <= 100 && (
+          request.query.filters.clientId == request.auth.uid ||
+          request.query.filters.driverId == request.auth.uid ||
+          (request.query.filters.restaurantId != null && get(/databases/$(database)/documents/restaurants/$(request.query.filters.restaurantId)).data.ownerId == request.auth.uid) ||
+          isAdmin() ||
+          // Driver looking for ready orders
+          (request.query.filters.status == 'ready' && getUserRole() == 'driver')
+        )
+      );
 
       // Order creation should ideally move to backend API to validate prices/stock
       allow create: if isSignedIn() && incoming().clientId == request.auth.uid;
