@@ -10,7 +10,7 @@ Après un audit complet des 6 dépôts (et leur consolidation locale dans `/ecos
 3. **Phase Frontend Split** (`letsgofood-landing`, `letsgofood-monorepo2`) : Landing pages isolées pour l'acquisition.
 4. **Phase Convergence (ACTUELLE)** : Le dépôt actuel (`root`) est le point d'orgue. Il unifie le backend (Express/Node) et le frontend (React) pour permettre :
    - **Real-time synchronisation** (Socket.io) native sur tout l'écosystème.
-   - **Shared Types** (TypeScript) entre client et serveur.
+   - **Shared Types** (TypeScript) entre client et server.
    - **Unified Auth** (JWT) gérant tous les rôles (Admin, Client, Merchant, Driver).
 
 ## 2. Audit de Différenciation
@@ -27,7 +27,7 @@ L'écosystème est maintenant structuré comme suit dans cet environnement :
 
 - 📂 `/` : **Plateforme Active** (Backend + Frontend Convergé)
 - 📂 `/source` : Code source React (App, Merchant, Driver, SaaS)
-- 📂 `/serveur` : Logiciel core Express (API, Sockets, DB)
+- 📂 `/server` : Logiciel core Express (API, Sockets, DB)
 - 📂 `/ecosysteme` : **Archives des 6 branches historiques** (Clonées pour consultation sans modification)
   - `01-let-s-go`
   - `02-letsgofood-api` (FastAPI Legacy)
@@ -37,6 +37,6 @@ L'écosystème est maintenant structuré comme suit dans cet environnement :
 ## 4. Recommandation Stratégique
 
 **Le "6 en 1" est opérationnel.** 
-Je recommande de ne plus maintenir les dépôts séparés. Toute nouvelle fonctionnalité (ex: nouveau dashboard marchand) doit être ajoutée comme un scope dans `App.tsx` et un router dans `/serveur/routes.ts`. 
+Je recommande de ne plus maintenir les dépôts séparés. Toute nouvelle fonctionnalité (ex: nouveau dashboard marchand) doit être ajoutée comme un scope dans `App.tsx` et un router dans `/backend/routes.ts`.
 
 L'architecture actuelle est **Scalable**, **Obsurable** et **Maintenable** via un point d'entrée unique.

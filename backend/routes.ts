@@ -26,7 +26,7 @@ const authenticate = (req: Request, res: Response, next: NextFunction) => {
 // AUTH
 router.post('/api/auth/login', async (req, res) => {
   const { idToken, role } = req.body;
-  
+
   if (!idToken) return res.status(400).json({ error: 'Missing idToken' });
 
   try {

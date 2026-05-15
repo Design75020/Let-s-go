@@ -10,8 +10,8 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import rateLimit from 'express-rate-limit';
 import { createServer as createViteServer } from 'vite';
-import apiRoutes from './serveur/routes';
-import { AuthService } from './serveur/services/auth.service';
+import apiRoutes from './backend/routes';
+import { AuthService } from './backend/services/auth.service';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',

@@ -15,7 +15,7 @@
 
 ## 2. AUDIT DE SÉCURITÉ & INTÉGRITÉ (STAGING)
 - **Authentification (Firebase + JWT) :** Validée. Les jetons invalides sont rejetés (401). Le pont d'identité est fonctionnel.
-- **Autorité sur les Prix :** Validée. Le backend rejette systématiquement toute commande dont le total client ne correspond pas au calcul serveur (+2.50€ livraison).
+- **Autorité sur les Prix :** Validée. Le backend rejette systématiquement toute commande dont le total client ne correspond pas au calcul server (+2.50€ livraison).
 - **RBAC & Transitions d'État :** Validées.
     - Client bloqué pour `accept_mission`.
     - Livreur bloqué pour `update_restaurant_status`.
@@ -47,7 +47,7 @@ Malgré la migration majeure, des chemins de confiance client-side persistent :
 ### ✅ **READY FOR UAT / STAGING PROD**
 **Recommandations :**
 1. Migrer les derniers `setDoc/updateDoc` du `MerchantPortal` vers l'API.
-2. Implementer une validation de rôle côté serveur lors de la création de compte Firebase (Cloud Function or API trigger).
+2. Implementer une validation de rôle côté server lors de la création de compte Firebase (Cloud Function or API trigger).
 3. Activer la surveillance Sentry/Datadog pour monitorer les latences P95 sous charge réelle.
 
 ---

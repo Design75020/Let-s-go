@@ -61,16 +61,14 @@ service cloud.firestore {
         isAdmin()
       );
 
-      // LISTING: Restrict to role-specific filters to prevent scraping
+      // LISTING: Allowed only if user is authorized for EVERY document in the result set.
+      // Firestore rules are NOT filters; the query MUST include the required filters.
       allow list: if isSignedIn() && (
-        request.query.limit <= 100 && (
-          request.query.filters.clientId == request.auth.uid ||
-          request.query.filters.driverId == request.auth.uid ||
-          (request.query.filters.restaurantId != null && get(/databases/$(database)/documents/restaurants/$(request.query.filters.restaurantId)).data.ownerId == request.auth.uid) ||
-          isAdmin() ||
-          // Driver looking for ready orders
-          (request.query.filters.status == 'ready' && getUserRole() == 'driver')
-        )
+        isAdmin() ||
+        resource.data.clientId == request.auth.uid ||
+        resource.data.driverId == request.auth.uid ||
+        get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid ||
+        (resource.data.status == 'ready' && getUserRole() == 'driver')
       );
 
       // Order creation should ideally move to backend API to validate prices/stock

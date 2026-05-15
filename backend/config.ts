@@ -5,7 +5,7 @@ dotenv.config();
 export const config = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: parseInt(process.env.PORT || '3000', 10),
-  JWT_SECRET: process.env.JWT_SECRET || 'lgf-v10-production-key-change-me',
+  JWT_SECRET: process.env.JWT_SECRET || '',
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
   FIREBASE: {

@@ -23,6 +23,6 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["source", "serveur", "serveur.ts", "API"],
+  "include": ["source", "backend", "server.ts", "API"],
   "exclude": ["node_modules", "ecosysteme", "dist"]
 }
