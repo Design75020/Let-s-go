@@ -2,10 +2,17 @@ import { db } from '../lib/firebase';
 import { collection, doc, setDoc, getDocs, serverTimestamp, writeBatch } from 'firebase/firestore';
 
 export async function seedDemoData() {
-  const restaurantsSnapshot = await getDocs(collection(db, 'restaurants'));
-  if (restaurantsSnapshot.size >= 4) return; // Already seeded
+  try {
+    const restaurantsSnapshot = await getDocs(collection(db, 'restaurants'));
+    const ordersSnapshot = await getDocs(collection(db, 'orders'));
+    
+    // If we have both restaurants and some orders, we consider it seeded enough for now
+    if (restaurantsSnapshot.size >= 5 && ordersSnapshot.size >= 1) {
+      console.log('Database already contains seeded data.');
+      return;
+    }
 
-  console.log('Seeding demo data...');
+    console.log('Seeding demo data...');
 
   const restaurants = [
     {
@@ -87,6 +94,26 @@ export async function seedDemoData() {
         saturday: { open: '10:00', close: '18:00' },
         sunday: { open: '10:00', close: '16:00' },
       }
+    },
+    {
+      id: 'resto_tacos',
+      name: 'Tacos Express',
+      ownerId: 'merchant_5',
+      category: 'Mexican • Fast Food',
+      rating: 4.5,
+      status: 'open',
+      image: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&q=80&w=800',
+      description: 'Délicieux tacos garnis à composer soi-même.',
+      address: '3 Rue de la Huchette, Paris',
+      hours: {
+        monday: { open: '10:00', close: '23:00' },
+        tuesday: { open: '10:00', close: '23:00' },
+        wednesday: { open: '10:00', close: '23:00' },
+        thursday: { open: '10:00', close: '23:00' },
+        friday: { open: '10:00', close: '01:00' },
+        saturday: { open: '10:00', close: '01:00' },
+        sunday: { open: '11:00', close: '22:00' },
+      }
     }
   ];
 
@@ -110,6 +137,11 @@ export async function seedDemoData() {
       { name: 'Buddha Bowl', price: 14.0, category: 'Bowls', available: true },
       { name: 'Smoothie Vert', price: 7.5, category: 'Boissons', available: true },
       { name: 'Avocado Toast', price: 11.5, category: 'Brunch', available: true },
+    ],
+    resto_tacos: [
+      { name: 'Tacos Double', price: 9.5, category: 'Tacos', available: true },
+      { name: 'Quesadilla Cheese', price: 7.0, category: 'Sides', available: true },
+      { name: 'Nachos Supreme', price: 8.5, category: 'Sides', available: true }
     ]
   };
 
@@ -146,6 +178,57 @@ export async function seedDemoData() {
     batch.set(doc(db, 'users', client.uid), { ...client, createdAt: serverTimestamp() });
   }
 
+  // Seed 3 Orders
+  const orders = [
+    {
+      id: 'order_1',
+      clientId: 'client_1',
+      clientName: 'Jean Client',
+      restaurantId: 'resto_burger',
+      restaurantName: 'Burger House',
+      items: [
+        { name: 'Le Classic', price: 12.5, quantity: 2 },
+        { name: 'Frites Maison', price: 4.5, quantity: 1 }
+      ],
+      total: 29.5,
+      status: 'delivered',
+      createdAt: new Date(Date.now() - 3600000)
+    },
+    {
+      id: 'order_2',
+      clientId: 'client_2',
+      clientName: 'Emma Foodie',
+      restaurantId: 'resto_sushi',
+      restaurantName: 'Sushi Tokyo',
+      items: [
+        { name: 'Plateau Salmon', price: 18.0, quantity: 1 }
+      ],
+      total: 18.0,
+      status: 'accepted',
+      createdAt: new Date(Date.now() - 1800000)
+    },
+    {
+      id: 'order_3',
+      clientId: 'client_1',
+      clientName: 'Jean Client',
+      restaurantId: 'resto_burger',
+      restaurantName: 'Burger House',
+      items: [
+        { name: 'Cheese Explosion', price: 14.9, quantity: 1 }
+      ],
+      total: 14.9,
+      status: 'preparing',
+      createdAt: new Date()
+    }
+  ];
+
+  for (const order of orders) {
+    batch.set(doc(db, 'orders', order.id), { ...order, createdAt: serverTimestamp() });
+  }
+
   await batch.commit();
   console.log('Seed completed successfully.');
+  } catch (error) {
+    console.error('Seeding failed:', error);
+  }
 }

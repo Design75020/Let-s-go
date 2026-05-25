@@ -18,13 +18,23 @@ export const navigateToDomain = (domain: DomainType, navigate?: any) => {
       admin: 'admin',
       crm: 'crm',
       saas: 'saas',
-      agent: 'agent'
+      agent: 'agent',
+      ops: 'ops'
     };
     window.location.href = `https://${subdomainMap[domain]}.letsgofood.fr`;
     return;
   }
 
   // Preview / AI Studio / webcontainer logic
+  if (domain === 'ops') {
+    if (navigate) {
+      navigate('/ops');
+    } else {
+      window.location.href = '/ops';
+    }
+    return;
+  }
+
   if (navigate) {
     // If not production, use search params for routing simulate subdomains
     navigate({

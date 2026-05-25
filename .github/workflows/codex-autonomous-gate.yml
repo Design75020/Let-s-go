@@ -1,0 +1,35 @@
+name: Codex AI Safety Gate
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  codex-gate:
+    name: OpenAI Codex Strict Verification Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Workspace Dependencies
+        run: npm ci
+
+      - name: Execute Codex Structural Validation
+        run: npm run codex:validate
+
+      - name: Execute Live Endpoints & SRE Gates
+        run: npm run codex:gate
+        env:
+          TARGET_URL: ${{ secrets.STAGING_URL || 'http://localhost:3000' }}
+
+      - name: Execute Transactional Ledger Consistency Audit
+        run: npm run codex:audit

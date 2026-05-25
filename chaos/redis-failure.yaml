@@ -1,0 +1,31 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: redis-failure-simulation
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    matchLabels:
+      app: redis
+  scheduler:
+    cron: "@every 10m"
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: api-db-partition
+spec:
+  action: partition
+  mode: all
+  selector:
+    matchLabels:
+      app: letsgo-api
+  target:
+    selector:
+      matchLabels:
+        app: postgres
+  direction: both
+  duration: "30s"
+  scheduler:
+    cron: "@every 30m"

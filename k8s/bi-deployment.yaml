@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: letsgofood-prod
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bi-config
+  namespace: letsgofood-prod
+data:
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+  BI_DAILY_COST_LIMIT: "50.0"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bi-backend
+  namespace: letsgofood-prod
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: bi-backend
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: bi-backend
+    spec:
+      containers:
+      - name: backend
+        image: gcr.io/letsgofood/v15-backend:latest
+        ports:
+        - containerPort: 3000
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+        livenessProbe:
+          httpGet:
+            path: /monitoring
+            port: 3000
+          initialDelaySeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /monitoring
+            port: 3000
+          initialDelaySeconds: 5
+        envFrom:
+        - configMapRef:
+            name: bi-config
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: db-secrets
+              key: url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: redis-secrets
+              key: url
+        - name: GEMINI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-secrets
+              key: api-key
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: bi-backend-hpa
+  namespace: letsgofood-prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: bi-backend
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70

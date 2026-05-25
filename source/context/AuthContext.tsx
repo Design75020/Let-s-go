@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { onAuthStateChanged, signOut, signInWithPopup } from 'firebase/auth';
-import { doc, updateDoc } from 'firebase/firestore';
+import { onAuthStateChanged, signOut, signInWithPopup, signInAnonymously } from 'firebase/auth';
+import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, googleProvider, db, getUserProfile, createUserProfile } from '../lib/firebase';
 
 interface AuthContextType {
@@ -22,7 +22,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         const profile = await getUserProfile(firebaseUser.uid);
-        setUser(profile ? { ...profile, uid: firebaseUser.uid } : null);
+        if (profile) {
+          setUser({ ...profile, uid: firebaseUser.uid });
+        } else {
+          // Fallback for cases where profile might be missing but user is logged in
+          setUser({ uid: firebaseUser.uid, role: 'client' });
+        }
       } else {
         setUser(null);
       }
@@ -32,22 +37,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loginAsEmail = async (email: string, role: string) => {
-    // SECURITY NOTE: This is an emergency bypass for the preview environment 
-    // when Google Auth popups are blocked by browser/domain restrictions.
-    if (email === 'letsgofood26@gmail.com' || email === 'admin@lgf.com' || email === 'u6860348073@id.gle') {
-      const mockUid = 'dev-uid-' + email.split('@')[0];
+    setLoading(true);
+    try {
+      // Use Anonymous Login as a bridge for the dev environment to have a valid request.auth uid
+      const result = await signInAnonymously(auth);
+      const isDevEmail = email === 'letsgofood26@gmail.com' || 
+                         email === 'admin@lgf.com' || 
+                         email === 'u6860348073@id.gle';
+
       const profile = {
-        name: email === 'u6860348073@id.gle' ? 'Sidi' : 'Sidi (Dev)',
-        email,
-        role,
-        uid: mockUid,
-        isDev: true
+        name: email.split('@')[0],
+        email: email,
+        role: role,
+        isDev: isDevEmail,
+        createdAt: new Date().toISOString()
       };
-      setUser(profile);
+
+      // Force create/update the profile in Firestore so rules can see the role
+      await setDoc(doc(db, 'users', result.user.uid), profile);
+      
+      setUser({ ...profile, uid: result.user.uid });
+    } catch (err) {
+      console.error('Anonymous login failed', err);
+      throw err;
+    } finally {
       setLoading(false);
-      return;
     }
-    throw new Error('Non autorisé.');
   };
 
   const loginWithGoogle = async (role: string) => {

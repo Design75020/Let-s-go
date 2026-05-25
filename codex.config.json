@@ -1,0 +1,64 @@
+{
+  "project": "letsgofood-v15",
+  "version": "1.0.0",
+  "environment": "production-grade",
+  "monorepo": {
+    "enabled": true,
+    "directories": {
+      "apps": [
+        "apps/api",
+        "apps/projection-worker"
+      ],
+      "packages": [
+        "server/services",
+        "source"
+      ]
+    }
+  },
+  "codex": {
+    "default_model": "gpt-4o",
+    "temperature": 0.1,
+    "max_tokens": 4096,
+    "strict_mode": true,
+    "system_prompt": "You are Codex, the enterprise SRE-grade coding agent for LetsGoFood V15. Your output must strictly conform to the static checks, database consistency guidelines, and rate-limiting schemas documented under AGENTS.md.",
+    "orchestrator_hook": "node codex/bin/codex-cli.js"
+  },
+  "safety_gates": {
+    "protected_files": [
+      ".github/workflows/production.yml",
+      "firestore.rules",
+      "prisma/schema.prisma",
+      "PRODUCTION_INFRA_BLUEPRINT.md",
+      "PRODUCTION_VALIDATION_PLAN.md"
+    ],
+    "forbidden_patterns": [
+      "sqlite",
+      "directDBMutationOutsideSSoT",
+      "removeFirestoreIndexes",
+      "bypassRateLimiter",
+      "console.log\\("
+    ],
+    "verification_pipeline": {
+      "pre_commit_lint": "npm run lint",
+      "typecheck": "npx tsc --noEmit",
+      "security_audit": "npx secretlint '**/*'",
+      "verify_live_gate": "node scripts/verify-live.js http://localhost:3000"
+    }
+  },
+  "rollback_strategy": {
+    "enabled": true,
+    "failure_triggers": {
+      "error_rate_threshold": 0.01,
+      "p95_latency_ms": 250,
+      "p99_latency_ms": 500,
+      "websocket_reconnect_storm": true,
+      "financial_discrepancy": true
+    },
+    "command": "gcloud run services update-traffic letsgofood-v15 --to-revisions PREVIOUS_STABLE=100 --region europe-west1"
+  },
+  "observability_hooks": {
+    "enforce_correlation_id": true,
+    "pino_json_logs": true,
+    "opentelemetry_stubs": true
+  }
+}

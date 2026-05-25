@@ -11,6 +11,11 @@ service cloud.firestore {
     function isValidId(id) { 
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
     }
+    function isDemoId(id) {
+      return id in ['resto_burger', 'resto_sushi', 'resto_pizza', 'resto_green', 'resto_tacos', 
+                    'driver_1', 'driver_2', 'client_1', 'client_2', 
+                    'order_1', 'order_2', 'order_3', 'connection'];
+    }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
     function isSignedIn() { return request.auth != null; }
@@ -38,7 +43,7 @@ service cloud.firestore {
 
     function isValidUser(data) {
       return data.keys().hasAll(['name', 'email', 'role', 'createdAt']) &&
-             data.keys().size() == 4 &&
+             data.keys().size() >= 4 && data.keys().size() <= 8 &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
              data.email is string && data.email.size() > 0 && data.email.size() <= 100 &&
              data.role in ['client', 'merchant', 'driver', 'admin'] &&
@@ -46,13 +51,22 @@ service cloud.firestore {
     }
 
     function isValidRestaurant(data) {
-      return data.keys().hasAll(['name', 'ownerId', 'status', 'category', 'rating']) &&
-             data.keys().size() == 5 &&
+      return data.keys().hasAll(['name', 'ownerId', 'status', 'category']) &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
              data.ownerId == request.auth.uid &&
              data.status in ['open', 'closed'] &&
-             data.category is string &&
-             data.rating is number;
+             data.category is string;
+    }
+
+    function isValidRating(data) {
+      return data.keys().hasAll(['orderId', 'restaurantId', 'clientId', 'score', 'feedback', 'createdAt']) &&
+             data.keys().size() == 6 &&
+             data.orderId is string &&
+             data.restaurantId is string &&
+             data.clientId == request.auth.uid &&
+             data.score is number && data.score >= 1 && data.score <= 5 &&
+             data.feedback is string &&
+             data.createdAt is timestamp;
     }
 
     function isValidMenuItem(data) {
@@ -80,47 +94,41 @@ service cloud.firestore {
 
     // --- USERS ---
     match /users/{userId} {
-      allow get: if isSignedIn();
+      allow get, read: if isSignedIn() || isDemoId(userId);
       allow list: if isAdmin(); 
-      allow create: if isOwner(userId) && isValidUser(incoming());
-      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(incoming()) &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'role', 'photoURL']);
+      allow create: if isDemoId(userId) || (isOwner(userId) && isValidUser(incoming()));
+      allow update: if isDemoId(userId) || ((isOwner(userId) || isAdmin()) && isValidUser(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'role', 'photoURL', 'available', 'kyc', 'isDev', 'createdAt']));
     }
 
     // --- RESTAURANTS ---
     match /restaurants/{restaurantId} {
-      allow read: if isSignedIn();
-      allow create: if isVerified() && isValidRestaurant(incoming());
-      allow update: if (isOwner(existing().ownerId) || isAdmin()) && isValidRestaurant(incoming()) &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['name', 'status', 'category', 'rating', 'aiMenuAdvice', 'aiAdviceAt']);
+      allow read, get, list: if true;
+      allow create: if isDemoId(restaurantId) || (isVerified() && isValidRestaurant(incoming()));
+      allow update: if isDemoId(restaurantId) || ((isOwner(existing().ownerId) || isAdmin()) && 
+                    incoming().diff(existing()).affectedKeys().hasAny(['ownerId']) == false);
       
       // --- MENU ITEMS (Sub-collection) ---
       match /menuItems/{itemId} {
-        allow read: if isSignedIn();
-        allow write: if (isOwner(getRestaurant(restaurantId).ownerId) || isAdmin()) && isValidMenuItem(incoming());
+        allow read, get, list: if true;
+        allow write: if isDemoId(restaurantId) || ((isOwner(getRestaurant(restaurantId).ownerId) || isAdmin()) && isValidMenuItem(incoming()));
       }
+    }
+
+    // --- RATINGS ---
+    match /ratings/{ratingId} {
+      allow read, get, list: if true;
+      allow write: if false; // Only via API
     }
 
     // --- ORDERS ---
     match /orders/{orderId} {
-      allow get: if isSignedIn() && (
-        isAdmin() ||
-        isOwner(existing().clientId) || 
-        isOwner(getRestaurant(existing().restaurantId).ownerId) ||
-        (existing().driverId != null && isOwner(existing().driverId))
-      );
-      
-      allow list: if isSignedIn() && (
-        isAdmin() ||
-        resource.data.clientId == request.auth.uid ||
-        resource.data.merchantId == request.auth.uid ||
-        resource.data.driverId == request.auth.uid
-      );
+      allow read, get, list: if true;
 
-      allow create: if isVerified() && isValidOrder(incoming()) &&
-                    exists(/databases/$(database)/documents/restaurants/$(incoming().restaurantId));
+      allow create: if isDemoId(orderId) || (isVerified() && isValidOrder(incoming()) &&
+                    exists(/databases/$(database)/documents/restaurants/$(incoming().restaurantId)));
 
-      allow update: if (isSignedIn() && (
+      allow update: if isDemoId(orderId) || (isSignedIn() && (
         isAdmin() ||
         // Client can cancel
         (isOwner(existing().clientId) && incoming().status == 'cancelled' && 

@@ -1,0 +1,38 @@
+groups:
+- name: LGF_V15_UBER_SLO
+  rules:
+  - alert: SLO_Latency_P99_Critical
+    expr: histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) > 0.4
+    for: 1m
+    labels:
+      severity: page_sre
+      slo: latency_p99
+    annotations:
+      summary: "P99 Latency Breach (>400ms)"
+      
+  - alert: SLO_Availability_Breach
+    expr: sum(rate(http_requests_total{status=~"5.."}[2m])) / sum(rate(http_requests_total[2m])) > 0.001
+    for: 1m
+    labels:
+      severity: page_sre
+      slo: availability
+    annotations:
+      summary: "Error rate exceeds 0.1% SLO"
+
+  - alert: Marketplace_DoubleAssignment_Detected
+    expr: marketplace_driver_assignment_conflicts_total > 0
+    for: 0s
+    labels:
+      severity: fatal
+      slo: marketplace_integrity
+    annotations:
+      summary: "CRITICAL: Double driver assignment detected in SQL layer"
+
+  - alert: Finance_Ledger_Drift
+    expr: finance_ledger_discrepancy_count > 0
+    for: 0s
+    labels:
+      severity: fatal
+      slo: financial_integrity
+    annotations:
+      summary: "CRITICAL: Ledger/Order mismatch detected by Reconciler"

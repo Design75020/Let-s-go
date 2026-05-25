@@ -1,4 +1,4 @@
-export type DomainType = 'landing' | 'app' | 'merchant' | 'driver' | 'admin' | 'crm' | 'saas' | 'agent';
+export type DomainType = 'landing' | 'app' | 'merchant' | 'driver' | 'admin' | 'crm' | 'saas' | 'agent' | 'ops';
 
 export interface KYCData {
   idCardUrl?: string;

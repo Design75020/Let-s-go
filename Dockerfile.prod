@@ -1,0 +1,51 @@
+# Multi-stage build for LetsGoFood V15 Production
+# Stage 1: Build
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+RUN npm run build
+
+# Stage 2: Production runtime
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3000
+# Security: Add a non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 letsgo
+
+# Install production dependencies only
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+# Copy built assets from builder
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/package.json ./package.json
+
+# Ensure Prisma client is generated
+RUN npx prisma generate
+
+# Final permissions
+RUN chown -R letsgo:nodejs /app
+
+USER letsgo
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "fetch('http://localhost:3000/api/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
+
+# The command will depend on the role (API vs Worker)
+# Default to API
+CMD ["node", "dist/server.cjs"]

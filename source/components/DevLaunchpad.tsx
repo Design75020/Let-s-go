@@ -72,6 +72,15 @@ const MODULES = [
     icon: Terminal,
     color: 'emerald',
     tag: 'AI Agent'
+  },
+  {
+    id: 'ops',
+    title: 'SI AI Software Factory',
+    subtitle: 'V15 Agent Orchestration',
+    description: 'Pilotez la génération d\'architecture de Manus et l\'implémentation de Codex en production Cloud Run.',
+    icon: Terminal,
+    color: 'red',
+    tag: 'Orchestrator'
   }
 ];
 

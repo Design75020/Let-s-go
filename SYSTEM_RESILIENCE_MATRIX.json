@@ -1,0 +1,35 @@
+{
+  "platform": "LetsGoFood V15",
+  "audit_version": "2026.05.17-CHAOS",
+  "scenarios": [
+    {
+      "failure_type": "REDIS_STREAM_LATENCY",
+      "symptom": "High Worker Lag (UHS -20)",
+      "containment": "XTRIM Bounding",
+      "recovery_mechanism": "Group Consumer Pointer Resync",
+      "status": "RESILIENT"
+    },
+    {
+      "failure_type": "DATABASE_LOCK_CONTENTION",
+      "symptom": "API Latency p99 > 3s",
+      "containment": "Circuit Breaker OPEN (API Routes)",
+      "recovery_mechanism": "Prisma Pool Flush & Retry",
+      "status": "RESILIENT_WITH_LIMITATIONS"
+    },
+    {
+      "failure_type": "WORKER_CRASH_LOOP",
+      "symptom": "Systemic Inconsistency Panic",
+      "containment": "Safe Mode Activation",
+      "recovery_mechanism": "WorkerSafety Exponential Backoff Restart",
+      "status": "FULLY_RESILIENT"
+    },
+    {
+      "failure_type": "WEBSOCKET_CAPACITY_LIMIT",
+      "symptom": "Connection Drop Rate > 10%",
+      "containment": "Auto-fallback to HTTP Polling",
+      "recovery_mechanism": "Reconnect Throttling (Jittered)",
+      "status": "RESILIENT"
+    }
+  ],
+  "resilience_score": 94
+}

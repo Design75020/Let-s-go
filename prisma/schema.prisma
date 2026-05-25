@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  role      String   @default("CUSTOMER") // CUSTOMER, DRIVER, MERCHANT, ADMIN
+  orders    Order[]  @relation("CustomerOrders")
+  missions  Order[]  @relation("DriverOrders")
+  createdAt DateTime @default(now())
+}
+
+model Restaurant {
+  id        String   @id @default(uuid())
+  name      String
+  location  String
+  orders    Order[]
+  createdAt DateTime @default(now())
+}
+
+model Order {
+  id           String     @id @default(uuid())
+  userId       String
+  user         User       @relation("CustomerOrders", fields: [userId], references: [id])
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  driverId     String?
+  driver       User?      @relation("DriverOrders", fields: [driverId], references: [id])
+  
+  status       String     @default("PENDING") 
+  // Lifecycle: PENDING -> ACCEPTED -> PREPARING -> READY -> PICKED_UP -> DELIVERED -> COMPLETED
+  
+  total        Float
+  idempotencyKey String?  @unique
+  
+  ledgerEntries LedgerEntry[]
+  
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model LedgerEntry {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id])
+  type      String   // CREDIT, DEBIT
+  amount    Float
+  purpose   String   // PAYMENT, PAYOUT, REFUND
+  status    String   @default("COMPLETED")
+  timestamp DateTime @default(now())
+}
+
+model EventLog {
+  id            String   @id @default(uuid())
+  type          String
+  payload       Json
+  correlationId String?
+  timestamp     DateTime @default(now())
+}
+
+model SystemMetric {
+  id        String   @id @default(uuid())
+  name      String
+  value     Float
+  labels    Json?
+  timestamp DateTime @default(now())
+}

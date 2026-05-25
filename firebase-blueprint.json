@@ -41,12 +41,27 @@
         "status": { "type": "string", "enum": ["open", "closed"] },
         "category": { "type": "string" },
         "rating": { "type": "number" },
+        "ratingCount": { "type": "number" },
         "address": { "type": "string" },
         "image": { "type": "string" },
         "description": { "type": "string" },
         "hours": { "type": "object" }
       },
       "required": ["name", "ownerId", "status"]
+    },
+    "rating": {
+      "title": "Order Rating",
+      "description": "Feedback and rating for an order",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string" },
+        "restaurantId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "score": { "type": "number", "enum": [1, 2, 3, 4, 5] },
+        "feedback": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["orderId", "restaurantId", "clientId", "score"]
     },
     "menuItem": {
       "title": "Menu Item",
@@ -69,7 +84,8 @@
         "clientId": { "type": "string" },
         "restaurantId": { "type": "string" },
         "driverId": { "type": "string" },
-        "status": { "type": "string", "enum": ["pending", "accepted", "preparing", "picked_up", "delivered", "cancelled"] },
+        "status": { "type": "string", "enum": ["pending", "accepted", "preparing", "ready", "picked_up", "delivering", "delivered", "cancelled"] },
+        "rated": { "type": "boolean" },
         "items": { "type": "array" },
         "total": { "type": "number" },
         "createdAt": { "type": "string", "format": "date-time" },
@@ -94,6 +110,10 @@
     "/orders/{orderId}": {
       "schema": "order",
       "description": "Global orders collection"
+    },
+    "/ratings/{ratingId}": {
+      "schema": "rating",
+      "description": "Global ratings collection"
     }
   }
 }

@@ -1,0 +1,102 @@
+name: LGF V15 Production Hardened Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  ci:
+    name: Continuous Integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint Strict
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+
+  gate:
+    name: SRE Validation Gate
+    needs: ci
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install Gate Runner Deps
+        run: npm install axios ws
+      
+      # In a real scenario, we'd deploy to a preview env first
+      - name: Run SRE Gate Simulation
+        run: node scripts/verify-live.js
+        env:
+          TARGET_URL: ${{ secrets.STAGING_URL }}
+
+  cd:
+    name: Production Deployment (Cloud Run)
+    needs: gate
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Docker Build & Push
+        run: |
+          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/lgf-api:${{ github.sha }} -f Dockerfile.prod .
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/lgf-api:${{ github.sha }}
+
+      - name: Deploy Canary (10% Traffic)
+        run: |
+          gcloud run deploy lgf-api \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/lgf-api:${{ github.sha }} \
+            --no-traffic \
+            --tag canary \
+            --region europe-west1
+          
+          gcloud run services update-traffic lgf-api \
+            --to-revisions canary=10 \
+            --region europe-west1
+
+      - name: Post-Deploy Health Check
+        run: node scripts/verify-live.js
+        env:
+          TARGET_URL: "https://canary---lgf-api-hash.a.run.app"
+
+      - name: Full Traffic Promotion
+        if: success()
+        run: |
+          gcloud run services update-traffic lgf-api \
+            --to-revisions LATEST=100 \
+            --region europe-west1
+
+      - name: Auto-Rollback on Failure
+        if: failure()
+        run: |
+          echo "GATE FAILED. ROLLING BACK."
+          gcloud run services update-traffic lgf-api \
+            --to-revisions LATEST=0 \
+            --region europe-west1

@@ -1,6 +1,6 @@
 {
-  "name": "LetsGoFood Ecosystem",
-  "description": "Plateforme unifiée 6-en-1 : Livraison Client, Merchant Portal, Driver Dispatch, SaaS Control Tower, CRM et Supervision Kernel.",
+  "name": "LetsGoFood V15 Production Authority",
+  "description": "Plateforme unifiée 6-en-1 durcie : Livraison Client, Merchant Portal, Driver Dispatch, SaaS Control Tower, CRM et Supervision Kernel. Opérations V15 de haute fiabilité.",
   "requestFramePermissions": ["geolocation"],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

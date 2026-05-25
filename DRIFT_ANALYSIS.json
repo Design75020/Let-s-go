@@ -1,0 +1,21 @@
+{
+  "migration_id": "EVENT-CUTOVER-2026-V15",
+  "baseline_metrics": {
+    "total_events_observed": 1542,
+    "mismatches": 2,
+    "drift_percentage": 0.13,
+    "p99_delivery_lag_ms": 120
+  },
+  "drift_reasons": {
+    "SIGNATURE_MALFORMED": 0,
+    "LEGACY_ONLY": 2,
+    "HARDENED_ONLY": 0,
+    "PAYLOAD_MISMATCH": 0
+  },
+  "worker_parity": {
+    "economy_worker": "MATCHED",
+    "anomaly_worker": "MATCHED",
+    "cost_worker": "MATCHED"
+  },
+  "validation_status": "READY_FOR_SHADOW_MODE"
+}

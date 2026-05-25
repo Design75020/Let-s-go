@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lgf-projection-worker
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: letsgo-worker
+  template:
+    metadata:
+      labels:
+        app: letsgo-worker
+    spec:
+      containers:
+      - name: worker
+        image: gcr.io/lgf-prod/worker:v15.1
+        env:
+        - name: WORKER_TYPE
+          value: "PROJECTION"
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"

@@ -1,23 +1,41 @@
-# Production Dockerfile for LetsGoFood (Multi-stage)
-# Build Stage
-FROM node:20-slim AS builder
+# --- Multi-Stage Build for Production ---
+# Stage 1: Build
+FROM node:20-alpine AS builder
+
 WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
 COPY package*.json ./
-RUN npm install
+COPY prisma ./prisma/
+RUN npm ci
+
 COPY . .
 RUN npm run build
 
-# Production Stage
-FROM node:20-slim
+# Stage 2: Production Runtime
+FROM node:20-alpine
+
 WORKDIR /app
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/server.ts ./ # If needed for direct execution or bundle
-COPY --from=builder /app/dist/server.cjs ./dist/server.cjs
-
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=8080
 
-EXPOSE 3000
+# Copy only relevant files and dependencies
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install only production dependencies, and generate Prisma Client
+RUN npm ci --omit=dev && npx prisma generate
+
+# Copy build artifacts
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/firebase-applet-config.json* ./
+
+EXPOSE 8080
+
+# Set user for security
+USER node
+
+# Run compiled server
 CMD ["node", "dist/server.cjs"]

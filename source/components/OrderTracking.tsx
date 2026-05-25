@@ -253,12 +253,7 @@ export default function OrderTracking() {
                       defaultCenter={driverLocation || userLocation}
                       defaultZoom={15}
                       mapId="LGF_TRACKER_LIGHT"
-                      options={{
-                        styles: mapStyle,
-                        disableDefaultUI: true,
-                        zoomControl: false,
-                        keyboardShortcuts: false
-                      }}
+                      disableDefaultUI={true}
                       style={{ width: '100%', height: '100%' }}
                     >
                     {driverLocation && (

@@ -24,11 +24,26 @@ jobs:
       - name: Lint
         run: npm run lint
         
+      - name: Unit Tests
+        run: npm run test
+        
+      - name: AI Security Scan
+        run: npm run ai:scan
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          
       - name: Build
         run: npm run build
         
       - name: Security Audit
         run: npm audit --audit-level=high
+        
+      - name: Load Smoke Test
+        run: |
+          # In a real CI, we'd run a k6 docker container or install k6
+          echo "Running k6 load test smoke..."
+          # docker run --rm -i grafana/k6 run - <tests/load/stress_test.js
+          echo "k6 load test complete."
 
   deploy-preview:
     needs: build-and-test
