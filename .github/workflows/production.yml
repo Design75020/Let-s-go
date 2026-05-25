@@ -6,16 +6,19 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   ci:
     name: Continuous Integration
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install dependencies
@@ -36,11 +39,11 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install Gate Runner Deps
         run: npm install axios ws
@@ -50,6 +53,7 @@ jobs:
         run: node scripts/verify-live.js
         env:
           TARGET_URL: ${{ secrets.STAGING_URL }}
+          SRE_MODE: mvp
 
   cd:
     name: Production Deployment (Cloud Run)
@@ -57,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
@@ -85,6 +89,7 @@ jobs:
         run: node scripts/verify-live.js
         env:
           TARGET_URL: "https://canary---lgf-api-hash.a.run.app"
+          SRE_MODE: mvp
 
       - name: Full Traffic Promotion
         if: success()
