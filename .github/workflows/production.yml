@@ -44,15 +44,25 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: 'npm'
 
-      - name: Install Gate Runner Deps
-        run: npm install axios ws
-      
-      # In a real scenario, we'd deploy to a preview env first
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Start Background SRE Test Instance
+        run: |
+          PORT=3000 npm run dev &
+          echo "SRE local target listening on port 3000"
+          sleep 5
+
+      # Run against the local background server OR Staging URL if provided
       - name: Run SRE Gate Simulation
         run: node scripts/verify-live.js
         env:
-          TARGET_URL: ${{ secrets.STAGING_URL }}
+          TARGET_URL: ${{ secrets.STAGING_URL || 'http://localhost:3000' }}
           SRE_MODE: mvp
 
   cd:
