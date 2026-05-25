@@ -73,6 +73,16 @@ export class SreSimulationEngine {
   private postgresqlStatusState: 'PRIMARY' | 'SYNCING' | 'ACTIVE' = 'SYNCING';
   private eventStreamStateState: 'BUFFERING' | 'REPLAYING' | 'STABLE' = 'BUFFERING';
 
+  // Progressive Canary Rollout and Auto-Rollback Engine Status
+  private canaryStatus: 'IDLE' | 'DEPLOYING' | 'DEPLOYED' | 'ROUTING_10' | 'ROUTING_30' | 'ROUTING_50' | 'COMPLETED_100' | 'ROLLED_BACK' | 'FAILED' = 'IDLE';
+  private canaryTraffic = 0; // % allocated to Canary
+  private canaryHealthScore = 100;
+  private canaryErrorRate = 0.0; // % errored requests
+  private canaryLatency = 24; // ms response time
+  private canaryProgress = 0; // % canary build progress
+  private canaryLogs: string[] = ["[CANARY PILOT] Standby. Production stable revision serving 100% of marketplace traffic."];
+  private canaryInterval: NodeJS.Timeout | null = null;
+
   private latestMetrics: SreMetrics = this.calculateInitialMetrics();
   private reports: SreValidationReport[] = [];
   private lastReport: SreValidationReport | null = null;
@@ -424,6 +434,112 @@ export class SreSimulationEngine {
     this.eventStreamStateState = 'STABLE';
   }
 
+  public startCanaryDeploy() {
+    if (this.canaryInterval) {
+      clearInterval(this.canaryInterval);
+      this.canaryInterval = null;
+    }
+    this.canaryStatus = 'DEPLOYING';
+    this.canaryProgress = 10;
+    this.canaryLogs = ["[CANARY PILOT] Initializing deployment of LetsGoFood V15 Canary revision..."];
+    this.canaryLogs.push("[CANARY PILOT] Building container image: gcr.io/PROJECT_ID/letsgofood:latest");
+    
+    let prog = 10;
+    this.canaryInterval = setInterval(() => {
+      prog += 30;
+      if (prog >= 100) {
+        if (this.canaryInterval) {
+          clearInterval(this.canaryInterval);
+          this.canaryInterval = null;
+        }
+        this.canaryProgress = 100;
+        this.canaryStatus = 'DEPLOYED';
+        this.canaryTraffic = 0;
+        this.canaryLogs.push("[CANARY PILOT] Container revision built successfully: letsgofood-api-v2-canary (0% traffic split). Ready for progressive rollout.");
+      } else {
+        this.canaryProgress = prog;
+        this.canaryLogs.push(`[CANARY PILOT] Running build triggers... ${prog}% of assets compiled and validated.`);
+      }
+    }, 1000);
+  }
+
+  public startCanaryRamp() {
+    if (this.canaryInterval) {
+      clearInterval(this.canaryInterval);
+      this.canaryInterval = null;
+    }
+    if (this.canaryStatus !== 'DEPLOYED' && this.canaryStatus !== 'ROLLED_BACK' && this.canaryStatus !== 'IDLE') {
+      return;
+    }
+    
+    this.canaryStatus = 'ROUTING_10';
+    this.canaryTraffic = 10;
+    this.canaryLogs.push("[CANARY PROGRESSIVE RAMP] Initiated progressive split to 10% traffic routing...");
+    this.canaryLogs.push("[SRE GATE] Activating Prometheus polling stream loops for Canary health indicators.");
+    
+    const steps: { status: typeof SreSimulationEngine.prototype.canaryStatus, traffic: number, log: string }[] = [
+      { status: 'ROUTING_30', traffic: 30, log: "[CANARY PROGRESSIVE RAMP] Canary stable at 10%. Scaling traffic split ratio to 30% Canary / 70% Primary." },
+      { status: 'ROUTING_50', traffic: 50, log: "[CANARY PROGRESSIVE RAMP] Progressive test threshold met. Scaling split to 50% Canary / 50% Primary." },
+      { status: 'COMPLETED_100', traffic: 100, log: "[SUCCESS] Progressive validation complete. Deploy successful. v2 is now Primary 100% stable SSoT revision. v1 deprecated." }
+    ];
+
+    let stepIdx = 0;
+    this.canaryInterval = setInterval(() => {
+      // SRE Auto-Rollback check: if there is active chaos causing errorRate > 1.5% or healthScore < 70, trigger instant automated rollback
+      const currentHealth = this.latestMetrics.healthScore;
+      const currentErrorRate = this.latestMetrics.errorRate;
+      
+      if (currentHealth < 71 || currentErrorRate > 1.5 || this.postgresSlow || this.writeFailure) {
+        if (this.canaryInterval) {
+          clearInterval(this.canaryInterval);
+          this.canaryInterval = null;
+        }
+        this.triggerCanaryRollback();
+        return;
+      }
+
+      if (stepIdx >= steps.length) {
+        if (this.canaryInterval) {
+          clearInterval(this.canaryInterval);
+          this.canaryInterval = null;
+        }
+        this.canaryStatus = 'COMPLETED_100';
+        this.canaryTraffic = 100;
+        return;
+      }
+
+      const nextStep = steps[stepIdx];
+      this.canaryStatus = nextStep.status;
+      this.canaryTraffic = nextStep.traffic;
+      this.canaryLogs.push(nextStep.log);
+      
+      stepIdx++;
+    }, 2000);
+  }
+
+  public triggerCanaryRollback() {
+    if (this.canaryInterval) {
+      clearInterval(this.canaryInterval);
+      this.canaryInterval = null;
+    }
+    this.canaryStatus = 'ROLLED_BACK';
+    this.canaryTraffic = 0;
+    this.canaryLogs.push("[SRE ALERT] [CRITICAL] Anomaly detected on letsgofood-api-v2-canary! Error Rate exceeded safety SLA limits.");
+    this.canaryLogs.push("[ROLLBACK] Triggering automated anti-cascade safety rollback: update-traffic ratio: latest=100 (canary=0).");
+    this.canaryLogs.push("[ROLLBACK] Zero-downtime rollback completed. Stable revision v1 restored as 100% handler. Systems preserved.");
+  }
+  
+  public resetCanary() {
+    if (this.canaryInterval) {
+      clearInterval(this.canaryInterval);
+      this.canaryInterval = null;
+    }
+    this.canaryStatus = 'IDLE';
+    this.canaryTraffic = 0;
+    this.canaryProgress = 0;
+    this.canaryLogs = ["[CANARY PILOT] Standby. Production stable revision serving 100% of marketplace traffic."];
+  }
+
   public runFullValidationSuite(users: number, drivers: number, spike: number): SreValidationReport {
     // Set parameters
     this.applyLoad(users, drivers, spike);
@@ -556,6 +672,15 @@ export class SreSimulationEngine {
         postgresqlActive: this.postgresqlActive,
         progress: this.migrationProgress,
         logs: this.migrationLogs
+      },
+      canary: {
+        status: this.canaryStatus,
+        traffic: this.canaryTraffic,
+        healthScore: this.canaryHealthScore,
+        errorRate: this.canaryErrorRate,
+        latency: this.canaryLatency,
+        progress: this.canaryProgress,
+        logs: this.canaryLogs
       }
     };
   }

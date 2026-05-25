@@ -268,6 +268,56 @@ export default function BIDashboard() {
     }
   };
 
+  const handleCanaryDeploy = async () => {
+    addSreLog("CANARY CONTROLLER: Initiating container construction and build for Canary revision...");
+    try {
+      const res = await fetch('/api/sre/canary-deploy', { method: 'POST' });
+      if (res.ok) {
+        addSreLog("CANARY CONTROLLER: Build triggers running. Creating isolated container tag...");
+        fetchSreStatus();
+      }
+    } catch (e) {
+      addSreLog("ERROR: Canary build triggering exception.");
+    }
+  };
+
+  const handleCanaryRamp = async () => {
+    addSreLog("CANARY CONTROLLER: Launching progressive traffic rules split starting with 10% Canary...");
+    try {
+      const res = await fetch('/api/sre/canary-ramp', { method: 'POST' });
+      if (res.ok) {
+        fetchSreStatus();
+      }
+    } catch (e) {
+      addSreLog("ERROR: Canary progressive ramp exception.");
+    }
+  };
+
+  const handleCanaryRollback = async () => {
+    addSreLog("SRE OVERRIDE: Triggering instant zero-downtime rollback. Demoting Canary traffic to 0%...");
+    try {
+      const res = await fetch('/api/sre/canary-rollback', { method: 'POST' });
+      if (res.ok) {
+        addSreLog("CANARY CONTROLLER: Deployment rollback successfully executed.");
+        fetchSreStatus();
+      }
+    } catch (e) {
+      addSreLog("ERROR: Canary manual rollback exception.");
+    }
+  };
+
+  const handleCanaryReset = async () => {
+    addSreLog("CANARY CONTROLLER: Resetting canary deployment framework parameters to default.");
+    try {
+      const res = await fetch('/api/sre/canary-reset', { method: 'POST' });
+      if (res.ok) {
+        fetchSreStatus();
+      }
+    } catch (e) {
+      addSreLog("ERROR: Canary configuration reset exception.");
+    }
+  };
+
   const handleRunFullValidation = async () => {
     setIsValidating(true);
     addSreLog(`SRE PILOT GATE: Triggering intensive load simulation and resilience suite...`);
@@ -1308,6 +1358,218 @@ export default function BIDashboard() {
                         </div>
                         <div className="text-[7.5px] text-white/35 uppercase text-left tracking-wider leading-relaxed mt-2 font-mono">
                           Endpoint: GET <span className="text-blue-400">/api/sre/autonomous-report</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* CLOUD RUN CANARY PROGRESSIVE ROLLOUT & SRE OVERWATCH */}
+                {sreData?.canary && (
+                  <div className="bg-[#0b0c10] border border-white/10 p-8 rounded-[2.5rem] shadow-xl text-white space-y-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-white/5">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${
+                            sreData.canary.status === 'ROLLED_BACK' ? 'bg-rose-500 animate-pulse' :
+                            sreData.canary.status === 'COMPLETED_100' ? 'bg-emerald-500 animate-pulse' :
+                            sreData.canary.status !== 'IDLE' ? 'bg-blue-500 animate-ping' : 'bg-slate-500'
+                          } shrink-0`} />
+                          <h4 className="text-md font-black uppercase tracking-wider font-mono italic text-white">Canary Progressive Deployment &amp; SRE Overwatch</h4>
+                        </div>
+                        <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest mt-0.5 block">
+                          Cloud Run Native Routing Split (10% → 100%) &amp; Automated Circuit Rollback Protection
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 font-mono">
+                        <span className="text-[10px] font-bold text-white/50 uppercase">Canary Traffic Split:</span>
+                        <span className={`px-2.5 py-1 text-[10px] font-black rounded-lg tracking-wider select-none ${
+                          sreData.canary.status === 'ROLLED_BACK' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
+                          sreData.canary.status === 'COMPLETED_100' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                          sreData.canary.traffic > 0 ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-slate-500/20 text-slate-400 border border-slate-500/30'
+                        }`}>
+                          {sreData.canary.traffic}% CANARY / {100 - sreData.canary.traffic}% STABLE
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      {/* Left Block: Orchestration Playbook & Controls */}
+                      <div className="lg:col-span-1 space-y-4 flex flex-col justify-between">
+                        <div className="bg-[#12131a] p-5 rounded-2xl border border-white/[0.04]">
+                          <h5 className="text-[10px] font-black uppercase tracking-wider text-white/60 mb-2 font-mono">
+                            Canary Control Playbook
+                          </h5>
+                          <div className="text-[11px] text-white/70 leading-relaxed space-y-2">
+                            <p>
+                              Safe multi-instance deployment leverages Google Cloud Run's native <strong>traffic splitting</strong>.
+                            </p>
+                            <p>
+                              We mount version v2 at <code className="text-blue-400 font-bold select-all">--no-traffic --tag canary</code>, then split a progressive ratio. SRE gates continuously monitor error anomaly indexes.
+                            </p>
+                            <p className="text-amber-400/80 font-mono text-[9.5px]">
+                              ℹ If database chaos or webhook failures exceed 1.5% error-rate limits during ramp up, SRE triggers an <strong>instant zero-downtime rollback</strong> to 100% stable v1.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2 pt-2">
+                          {sreData.canary.status === 'IDLE' && (
+                            <button
+                              onClick={handleCanaryDeploy}
+                              className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest text-center transition-all cursor-pointer font-mono font-bold"
+                            >
+                              🏗 Prepare Canary Build (v2)
+                            </button>
+                          )}
+
+                          {sreData.canary.status === 'DEPLOYING' && (
+                            <div className="w-full py-3 bg-white/5 text-white/60 rounded-xl text-[9px] font-black uppercase tracking-widest text-center border border-white/5 select-none font-mono">
+                              ⏳ Compiling Canary container: {sreData.canary.progress}%
+                            </div>
+                          )}
+
+                          {(sreData.canary.status === 'DEPLOYED' || sreData.canary.status === 'ROLLED_BACK' || sreData.canary.status === 'FAILED') && (
+                            <button
+                              onClick={handleCanaryRamp}
+                              className="w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl text-[9px] font-black uppercase tracking-widest text-center transition-all cursor-pointer font-mono font-bold"
+                            >
+                              ⚡ Start Progressive 10% → 100% Ramp
+                            </button>
+                          )}
+
+                          {sreData.canary.status.startsWith('ROUTING_') && (
+                            <div className="w-full py-3 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-center select-none font-mono animate-pulse">
+                              📡 Active progressive routing: {sreData.canary.traffic}% split
+                            </div>
+                          )}
+
+                          {sreData.canary.status === 'COMPLETED_100' && (
+                            <div className="w-full py-3 bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 rounded-xl text-[9px] font-black uppercase tracking-widest text-center select-none font-sans font-bold">
+                              ✔ Canary 100% Rolled Out
+                            </div>
+                          )}
+
+                          {sreData.canary.status !== 'IDLE' && (
+                            <div className="grid grid-cols-2 gap-2 mt-1">
+                              <button
+                                onClick={handleCanaryRollback}
+                                disabled={sreData.canary.status === 'ROLLED_BACK'}
+                                className={`py-2 px-2 text-[8px] font-black uppercase tracking-widest text-center rounded-lg transition-all font-mono select-none cursor-pointer ${
+                                  sreData.canary.status === 'ROLLED_BACK'
+                                    ? 'bg-rose-950/20 text-rose-500/40 border border-rose-950/30'
+                                    : 'bg-rose-550/20 hover:bg-rose-550/30 text-rose-450 border border-rose-550/30 hover:text-white'
+                                }`}
+                              >
+                                🚨 Overrule &amp; Rollback
+                              </button>
+                              <button
+                                onClick={handleCanaryReset}
+                                className="py-2 px-2 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white border border-white/5 rounded-lg text-[8px] font-black uppercase tracking-widest text-center transition-all cursor-pointer font-mono"
+                              >
+                                Reset config
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Middle Block: Live Canary Console Logs */}
+                      <div className="lg:col-span-1 flex flex-col justify-between bg-[#040508] p-5 rounded-2xl border border-white/5 font-mono">
+                        <div>
+                          <h5 className="text-[10px] font-black uppercase tracking-wider text-white/50 mb-3 leading-none font-mono">
+                            Canary Gcloud Console
+                          </h5>
+                          <div className="space-y-2 overflow-y-auto h-[170px] pr-2 text-[8.5px] text-white/80 leading-relaxed font-mono">
+                            {sreData.canary.logs.map((log: string, idx: number) => (
+                              <div key={idx} className="flex gap-1 items-start">
+                                <span className="text-blue-450 shrink-0">&gt;</span>
+                                <span className={
+                                  log.includes('[SUCCESS]') || log.includes('SUCCESS') ? 'text-emerald-450 font-bold' :
+                                  log.includes('[SRE ALERT]') || log.includes('[ROLLBACK]') || log.includes('CRITICAL') ? 'text-rose-400 font-black animate-pulse' :
+                                  log.includes('[CANARY PROGRESSIVE RAMP]') ? 'text-blue-400 font-bold' : ''
+                                }>
+                                  {log}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {sreData.canary.status !== 'IDLE' && (
+                          <div className="mt-4 pt-4 border-t border-white/5">
+                            <div className="flex justify-between items-center mb-1.5 font-mono">
+                              <span className="text-[8px] font-black uppercase text-white/40">Canary revision ramp rating:</span>
+                              <span className="text-[10px] font-black text-blue-450 font-mono">{sreData.canary.status}</span>
+                            </div>
+                            <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/5">
+                              <div 
+                                className={`h-full transition-all duration-500 rounded-full ${
+                                  sreData.canary.status === 'ROLLED_BACK' ? 'bg-rose-500' : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                                }`} 
+                                style={{ width: `${sreData.canary.status === 'DEPLOYING' ? sreData.canary.progress : sreData.canary.traffic}%` }} 
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right Block: Active SRE Overseer Metrics */}
+                      <div className="lg:col-span-1 bg-[#12131a] p-5 rounded-2xl border border-white/[0.04] flex flex-col justify-between font-mono">
+                        <div>
+                          <h5 className="text-[10px] font-black uppercase tracking-wider text-white/60 mb-2 font-mono">
+                            Active Canary Diagnostics
+                          </h5>
+                          <div className="space-y-3 font-mono">
+                            <div className="flex justify-between items-center py-2 border-b border-white/[0.03]">
+                              <span className="text-[9px] text-white/45 uppercase">Instance error SLA</span>
+                              <span className={`text-[10px] font-bold ${sreData.metrics.errorRate > 1.5 ? 'text-rose-400 font-black animate-pulse' : 'text-emerald-400'}`}>
+                                {sreData.metrics.errorRate.toFixed(2)}% (Limit: 1.5%)
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center py-2 border-b border-white/[0.03]">
+                              <span className="text-[9px] text-white/45 uppercase">Routing health rating</span>
+                              <span className={`text-[10px] font-bold ${sreData.metrics.healthScore < 71 ? 'text-rose-400 font-black' : 'text-emerald-400'}`}>
+                                {sreData.metrics.healthScore} pt
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between items-center py-2 border-b border-white/[0.03]">
+                              <span className="text-[9px] text-white/45 uppercase">Active database state</span>
+                              <span className="text-[10px] font-bold text-white/80 uppercase justify-end items-end flex text-right">
+                                {sreData.migration.postgresqlActive ? "PostgreSQL (Cloud SQL)" : "SQLite Local"}
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between items-center py-2 border-b border-white/[0.03]">
+                              <span className="text-[9px] text-white/45 uppercase">Anti-outage trigger</span>
+                              <span className={`text-[9.5px] font-bold uppercase shrink-0 text-right ${sreData.canary.status === 'ROLLED_BACK' ? 'text-rose-400 font-black' : 'text-white/65'}`}>
+                                {sreData.canary.status === 'ROLLED_BACK' ? 'ACTIVATED (AUTO-ROLLBACKED)' : 'Armed & Watchful'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-2">
+                          <span className="text-[7.5px] text-white/35 uppercase text-left tracking-wider leading-relaxed font-mono">
+                            Auto-Evaluation feedback
+                          </span>
+                          <div className={`p-2.5 rounded-lg border text-[8.5px] uppercase leading-normal font-mono font-bold ${
+                            sreData.canary.status === 'ROLLED_BACK' 
+                              ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' 
+                              : sreData.metrics.errorRate > 1.5 || sreData.metrics.healthScore < 71 || sreData.chaos.postgresSlow || sreData.chaos.writeFailure
+                                ? 'bg-amber-400/15 text-amber-400 border-amber-400/20 animate-pulse'
+                                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          }`}>
+                            {sreData.canary.status === 'ROLLED_BACK' 
+                              ? "🚨 Automated roll-safe trigger: Canary health anomaly detected! Zero-downtime regression completed successfully." 
+                              : sreData.metrics.errorRate > 1.5 || sreData.metrics.healthScore < 71 || sreData.chaos.postgresSlow || sreData.chaos.writeFailure
+                                ? "⚠ HEALTH DRIFT: High error rates. Initiating automatic rollout termination alert."
+                                : "✔ NOMINAL STATUS: Canary performance metrics remain healthy under present traffic share loads."
+                            }
+                          </div>
                         </div>
                       </div>
                     </div>
