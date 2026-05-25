@@ -11,6 +11,7 @@ import { authenticate, authorize } from './middleware/AuthMiddleware';
 import { UserRole, Security } from './services/infrastructure/Security';
 import { AuditLog } from './services/infrastructure/AuditLog';
 import { AgentsPipelineCoordinator } from '../agents-pipeline/pipeline';
+import { sreSimulationEngine } from './services/infrastructure/SreSimulationEngine';
 
 const router = Router();
 
@@ -284,6 +285,48 @@ router.get('/api/agents/runs/:id', (req, res) => {
   const state = AgentsPipelineCoordinator.getState(req.params.id);
   if (!state) return res.status(404).json({ error: 'Pipeline run not found' });
   res.json(state);
+});
+
+// --- LETSGOFOOD V15 PRODUCTION SRE & CHAOS API ---
+
+router.get('/api/sre/status', (req, res) => {
+  res.json(sreSimulationEngine.getStatus());
+});
+
+router.post('/api/sre/trigger-load', (req, res) => {
+  const { loadUsers, loadDrivers, orderSpike } = req.body;
+  sreSimulationEngine.applyLoad(Number(loadUsers), Number(loadDrivers), Number(orderSpike));
+  res.json({ success: true, status: sreSimulationEngine.getStatus() });
+});
+
+router.post('/api/sre/toggle-chaos', (req, res) => {
+  const { type, active } = req.body;
+  sreSimulationEngine.toggleChaos(type, active);
+  res.json({ success: true, status: sreSimulationEngine.getStatus() });
+});
+
+router.post('/api/sre/rebuild', (req, res) => {
+  sreSimulationEngine.rebuildProjections();
+  res.json({ success: true, status: sreSimulationEngine.getStatus() });
+});
+
+router.post('/api/sre/auto-heal', (req, res) => {
+  sreSimulationEngine.runAutoHealing();
+  res.json({ success: true, status: sreSimulationEngine.getStatus(), message: "Draining DLQ and reviving workers..." });
+});
+
+router.post('/api/sre/run-validation', (req, res) => {
+  const { loadUsers, loadDrivers, orderSpike } = req.body;
+  const report = sreSimulationEngine.runFullValidationSuite(
+    Number(loadUsers || 1500),
+    Number(loadDrivers || 350),
+    Number(orderSpike || 6000)
+  );
+  res.json({ success: true, status: sreSimulationEngine.getStatus(), report });
+});
+
+router.get('/api/sre/autonomous-report', (req, res) => {
+  res.json(sreSimulationEngine.getAutonomousReport());
 });
 
 export default router;
