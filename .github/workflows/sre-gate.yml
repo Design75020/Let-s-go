@@ -1,0 +1,88 @@
+name: LetsGoFood V15 - SRE Production Gate
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  NODE_VERSION: 24
+
+jobs:
+  sre_gate:
+    name: SRE Health Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Run unit tests
+        run: npm test --if-present
+
+      - name: Start application (background)
+        run: |
+          npm run start &
+          sleep 10
+
+      - name: SRE Health Check - API
+        run: |
+          curl -f http://localhost:3000/api/health || exit 1
+
+      - name: SRE Health Check - PostgreSQL
+        run: |
+          node scripts/check-postgres.js
+
+      - name: SRE Health Check - Redis Streams
+        run: |
+          node scripts/check-redis.js
+
+      - name: CQRS Drift Check
+        run: |
+          node scripts/check-cqrs-drift.js
+
+      - name: System Health Evaluation
+        id: sre
+        run: |
+          node scripts/sre-evaluate.js > sre_result.json
+          cat sre_result.json
+
+      - name: Fail if CRITICAL
+        run: |
+          STATUS=$(cat sre_result.json | jq -r '.status')
+          if [ "$STATUS" = "CRITICAL" ]; then
+            echo "SRE Gate FAILED - CRITICAL SYSTEM STATE"
+            exit 1
+          fi
+
+      - name: Deploy to Cloud Run
+        if: success()
+        run: |
+          echo "Deploying to Cloud Run..."
+          gcloud run deploy letsgofood-api \
+            --source . \
+            --region europe-west1 \
+            --platform managed \
+            --allow-unauthenticated
+
+      - name: Post Deployment Health Check
+        run: |
+          sleep 15
+          curl -f https://YOUR_CLOUD_RUN_URL/api/health || exit 1
+
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "Deployment failed - triggering rollback"
+          node scripts/rollback.js

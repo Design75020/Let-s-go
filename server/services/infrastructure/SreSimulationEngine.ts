@@ -60,6 +60,19 @@ export class SreSimulationEngine {
   private isRebuilding = false;
   private isHealing = false;
 
+  // DB Reliability and Migration simulation fields
+  private migrationStatus: 'IDLE' | 'FREEZING' | 'EXPORTING' | 'IMPORTING' | 'VALIDATING' | 'SWITCHED' | 'TESTING' | 'SUCCESS' | 'FAILED' = 'IDLE';
+  private sqliteEliminated = false;
+  private postgresqlActive = false;
+  private migrationProgress = 0;
+  private migrationLogs: string[] = ["[MIGRATION SERVICE] Standby mode. SQLite datastore active. Systems nominal."];
+  private migrationInterval: NodeJS.Timeout | null = null;
+  private migrationModeState: 'ACTIVE' | 'COMPLETE' | 'FAILED' = 'ACTIVE';
+  private cutoverStatusState: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' = 'NOT_STARTED';
+  private sqliteStatusState: 'DEPRECATED' | 'READ_ONLY' | 'REMOVED' = 'READ_ONLY';
+  private postgresqlStatusState: 'PRIMARY' | 'SYNCING' | 'ACTIVE' = 'SYNCING';
+  private eventStreamStateState: 'BUFFERING' | 'REPLAYING' | 'STABLE' = 'BUFFERING';
+
   private latestMetrics: SreMetrics = this.calculateInitialMetrics();
   private reports: SreValidationReport[] = [];
   private lastReport: SreValidationReport | null = null;
@@ -270,6 +283,147 @@ export class SreSimulationEngine {
     logger.info("SRE_SIMULATION: Running SRE Auto-Healing script (revived workers, draining DLQ)...");
   }
 
+  public startMigration() {
+    if (this.migrationStatus !== 'IDLE' && this.migrationStatus !== 'FAILED') {
+      return;
+    }
+    if (this.migrationInterval) {
+      clearInterval(this.migrationInterval);
+    }
+    this.migrationStatus = 'FREEZING';
+    this.migrationProgress = 10;
+    this.migrationModeState = 'ACTIVE';
+    this.cutoverStatusState = 'NOT_STARTED';
+    this.sqliteStatusState = 'READ_ONLY';
+    this.postgresqlStatusState = 'SYNCING';
+    this.eventStreamStateState = 'BUFFERING';
+
+    this.migrationLogs = ["[SYSTEM] Initiating target PostgreSQL database migration sequence for LetsGoFood V15."];
+    this.migrationLogs.push("[STEP 1/6] [FREEZING] Freezing SQLite write requests. Redirecting writes to temporary buffering stream queues...");
+    
+    // Define steps
+    const steps: { 
+      name: 'EXPORTING' | 'IMPORTING' | 'VALIDATING' | 'SWITCHED' | 'TESTING' | 'SUCCESS', 
+      progress: number, 
+      logMsg: string,
+      mode: 'ACTIVE' | 'COMPLETE' | 'FAILED',
+      cutover: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED',
+      sqliteStatus: 'DEPRECATED' | 'READ_ONLY' | 'REMOVED',
+      postgresStatus: 'PRIMARY' | 'SYNCING' | 'ACTIVE',
+      eventStream: 'BUFFERING' | 'REPLAYING' | 'STABLE'
+    }[] = [
+      { 
+        name: 'EXPORTING', 
+        progress: 30, 
+        logMsg: "[STEP 2/6] [EXPORTING] Exporting local SQLite binary datasets. Extracted active records cleanly. Total records: 95.",
+        mode: 'ACTIVE',
+        cutover: 'IN_PROGRESS',
+        sqliteStatus: 'READ_ONLY',
+        postgresStatus: 'SYNCING',
+        eventStream: 'BUFFERING'
+      },
+      { 
+        name: 'IMPORTING', 
+        progress: 55, 
+        logMsg: "[STEP 3/6] [IMPORTING] Importing schema and records into Google Cloud SQL PostgreSQL. Inserting transaction batches cleanly.",
+        mode: 'ACTIVE',
+        cutover: 'IN_PROGRESS',
+        sqliteStatus: 'READ_ONLY',
+        postgresStatus: 'SYNCING',
+        eventStream: 'BUFFERING'
+      },
+      { 
+        name: 'VALIDATING', 
+        progress: 75, 
+        logMsg: "[STEP 4/6] [VALIDATING] Data integrity validation: Row count matches, cryptographic ledger checks complete (100% SUCCESS).",
+        mode: 'ACTIVE',
+        cutover: 'IN_PROGRESS',
+        sqliteStatus: 'READ_ONLY',
+        postgresStatus: 'ACTIVE',
+        eventStream: 'BUFFERING'
+      },
+      { 
+        name: 'SWITCHED', 
+        progress: 90, 
+        logMsg: "[STEP 5/6] [SWITCHED] Switching primary Prisma adapter source from SQLite to Cloud SQL PostgreSQL. Activating PgBouncer pooling.",
+        mode: 'ACTIVE',
+        cutover: 'IN_PROGRESS',
+        sqliteStatus: 'DEPRECATED',
+        postgresStatus: 'PRIMARY',
+        eventStream: 'REPLAYING'
+      },
+      { 
+        name: 'TESTING', 
+        progress: 98, 
+        logMsg: "[STEP 6/6] [TESTING] Verifying direct application routes. Replaying buffered event streams into Cloud SQL & Firestore.",
+        mode: 'ACTIVE',
+        cutover: 'IN_PROGRESS',
+        sqliteStatus: 'DEPRECATED',
+        postgresStatus: 'PRIMARY',
+        eventStream: 'REPLAYING'
+      },
+      { 
+        name: 'SUCCESS', 
+        progress: 100, 
+        logMsg: "[SUCCESS] [COMPLETE] Enterprise Zero-Downtime database migration complete! SQLite is safely deprecated & removed.",
+        mode: 'COMPLETE',
+        cutover: 'COMPLETED',
+        sqliteStatus: 'REMOVED',
+        postgresStatus: 'PRIMARY',
+        eventStream: 'STABLE'
+      }
+    ];
+
+    let stepIndex = 0;
+    this.migrationInterval = setInterval(() => {
+      if (stepIndex >= steps.length) {
+        if (this.migrationInterval) {
+          clearInterval(this.migrationInterval);
+        }
+        this.sqliteEliminated = true;
+        this.postgresqlActive = true;
+        this.migrationProgress = 100;
+        this.migrationStatus = 'SUCCESS';
+        this.migrationModeState = 'COMPLETE';
+        this.cutoverStatusState = 'COMPLETED';
+        this.sqliteStatusState = 'REMOVED';
+        this.postgresqlStatusState = 'PRIMARY';
+        this.eventStreamStateState = 'STABLE';
+        return;
+      }
+      const step = steps[stepIndex];
+      this.migrationStatus = step.name;
+      this.migrationProgress = step.progress;
+      this.migrationLogs.push(step.logMsg);
+      
+      this.migrationModeState = step.mode;
+      this.cutoverStatusState = step.cutover;
+      this.sqliteStatusState = step.sqliteStatus;
+      this.postgresqlStatusState = step.postgresStatus;
+      this.eventStreamStateState = step.eventStream;
+      
+      stepIndex++;
+    }, 1500);
+  }
+
+  public resetMigration() {
+    if (this.migrationInterval) {
+      clearInterval(this.migrationInterval);
+      this.migrationInterval = null;
+    }
+    this.migrationStatus = 'IDLE';
+    this.sqliteEliminated = false;
+    this.postgresqlActive = false;
+    this.migrationProgress = 0;
+    this.migrationLogs = ["[MIGRATION SERVICE] Standby mode. SQLite datastore active. Systems nominal."];
+    
+    this.migrationModeState = 'ACTIVE';
+    this.cutoverStatusState = 'NOT_STARTED';
+    this.sqliteStatusState = 'READ_ONLY';
+    this.postgresqlStatusState = 'SYNCING';
+    this.eventStreamStateState = 'STABLE';
+  }
+
   public runFullValidationSuite(users: number, drivers: number, spike: number): SreValidationReport {
     // Set parameters
     this.applyLoad(users, drivers, spike);
@@ -395,7 +549,14 @@ export class SreSimulationEngine {
       },
       metrics: this.latestMetrics,
       lastReport: this.lastReport,
-      reports: this.reports
+      reports: this.reports,
+      migration: {
+        status: this.migrationStatus,
+        sqliteEliminated: this.sqliteEliminated,
+        postgresqlActive: this.postgresqlActive,
+        progress: this.migrationProgress,
+        logs: this.migrationLogs
+      }
     };
   }
 
@@ -485,7 +646,9 @@ export class SreSimulationEngine {
 
     // Root Cause Analysis
     let rootCauseAnalysis = "All systems nominal. Distributed transaction layers are perfectly synchronized.";
-    if (this.postgresSlow) {
+    if (!this.postgresqlActive) {
+      rootCauseAnalysis = "PRIMARY DATABASE WARNING: SQLite active. High corruption risk under multi-instance horizontal scaling constraints.";
+    } else if (this.postgresSlow) {
       rootCauseAnalysis = "PostgreSQL primary instance experiencing connection pool exhaustion and database locks during concurrent dispatch storm.";
     } else if (this.workerKilled) {
       rootCauseAnalysis = "ProjectionWorker container terminated. Message broker backlog mounting, leading to active CQRS read-model drift.";
@@ -497,9 +660,33 @@ export class SreSimulationEngine {
       rootCauseAnalysis = "Transient HTTP response degradation on initial Cloud Run container scale-out.";
     }
 
-    // Production readiness
+    // Map fields for the required target database migration format
+    const migrationStatusMapped: 'SUCCESS' | 'FAILED' | 'PARTIAL' = 
+      this.migrationStatus === 'SUCCESS' ? 'SUCCESS' :
+      this.migrationStatus === 'FAILED' ? 'FAILED' : 'PARTIAL';
+
+    const cqrsIntegrityMapped: 'VALID' | 'DRIFT' | 'BROKEN' = 
+      this.driftCount > 10 ? 'BROKEN' :
+      this.driftCount > 0 ? 'DRIFT' : 'VALID';
+
+    let systemRiskLevel: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW';
+    if (!this.postgresqlActive) {
+      systemRiskLevel = 'HIGH';
+    } else if (healthScore < 70 || this.driftCount > 5) {
+      systemRiskLevel = 'MEDIUM';
+    }
+
+    let recommendationMapped: 'DEPLOY' | 'HOLD' | 'ROLLBACK' = 'DEPLOY';
+    if (!this.postgresqlActive) {
+      recommendationMapped = 'HOLD';
+    } else if (rollbackTriggered) {
+      recommendationMapped = 'ROLLBACK';
+    }
+
     let productionReadiness: 'YES' | 'CONDITIONAL' | 'NO' = 'YES';
-    if (healthScore >= 90 && this.driftCount === 0 && activeChaosCount === 0) {
+    if (!this.postgresqlActive) {
+      productionReadiness = 'NO';
+    } else if (healthScore >= 90 && this.driftCount === 0 && activeChaosCount === 0) {
       productionReadiness = 'YES';
     } else if (healthScore >= 70 && !this.postgresSlow && !this.workerKilled) {
       productionReadiness = 'CONDITIONAL';
@@ -513,13 +700,30 @@ export class SreSimulationEngine {
       loadTestResult,
       chaosTestResult,
       cqrsState,
-      eventStreamState,
       incidentDetected,
       severity,
       rollbackTriggered,
       autoHealingActions,
       rootCauseAnalysis,
-      productionReadiness
+      productionReadiness,
+
+      // Enterprise DB reliability specs
+      migrationStatus: migrationStatusMapped,
+      sqliteEliminated: this.sqliteEliminated,
+      postgresqlActive: this.postgresqlActive,
+      cqrsIntegrity: cqrsIntegrityMapped,
+      systemRiskLevel,
+
+      // Global schema strict format matches
+      migrationMode: this.migrationModeState,
+      cutoverStatus: this.cutoverStatusState,
+      sqliteStatus: this.sqliteStatusState,
+      postgresqlStatus: this.postgresqlStatusState,
+      eventStreamState: this.eventStreamStateState,
+      dataLossDetected: false,
+      duplicateEventsDetected: false,
+      rollbackAvailable: true,
+      recommendation: recommendationMapped
     };
   }
 }

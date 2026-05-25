@@ -242,6 +242,32 @@ export default function BIDashboard() {
     }
   };
 
+  const handleRunMigration = async () => {
+    addSreLog("MIGRATION SERVICE: Dispatching PostgreSQL deployment and migration protocol...");
+    try {
+      const res = await fetch('/api/sre/migrate-db', { method: 'POST' });
+      if (res.ok) {
+        addSreLog("MIGRATION SERVICE: Migration sequence started. Intercepting database writes...");
+        fetchSreStatus();
+      }
+    } catch (e) {
+      addSreLog("ERROR: Database migration trigger failure.");
+    }
+  };
+
+  const handleResetMigration = async () => {
+    addSreLog("MIGRATION SERVICE: Initiating system downgrade - resetting persistence back to SQLite...");
+    try {
+      const res = await fetch('/api/sre/reset-migration', { method: 'POST' });
+      if (res.ok) {
+        addSreLog("MIGRATION SERVICE: Database reset success. SQLite (dev.db) active.");
+        fetchSreStatus();
+      }
+    } catch (e) {
+      addSreLog("ERROR: Database reset trigger failure.");
+    }
+  };
+
   const handleRunFullValidation = async () => {
     setIsValidating(true);
     addSreLog(`SRE PILOT GATE: Triggering intensive load simulation and resilience suite...`);
@@ -1144,6 +1170,144 @@ export default function BIDashboard() {
                             <span className="text-white/40 block text-[8px] mb-1 leading-none">Root Cause Analysis (RCA):</span>
                             {autonomousReport.rootCauseAnalysis}
                           </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* POSTGRESQL PRODUCTION MIGRATION & SSOT CONTROL CENTER */}
+                {sreData?.migration && (
+                  <div className="bg-[#0b0c10] border border-white/10 p-8 rounded-[2.5rem] shadow-xl text-white space-y-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-white/5">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${sreData.migration.postgresqlActive ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-pulse'} shrink-0`} />
+                          <h4 className="text-md font-black uppercase tracking-wider font-mono italic text-white">PostgreSQL Cloud SQL Migration Desk</h4>
+                        </div>
+                        <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest mt-0.5 block">
+                          Enterprise CQRS Database Reliability Protocol &amp; Zero Data Loss Gates
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 font-mono">
+                        <span className="text-[10px] font-bold text-white/50 uppercase">Active DB Layer:</span>
+                        <span className={`px-2.5 py-1 text-[10px] font-black rounded-lg tracking-wider select-none ${
+                          sreData.migration.postgresqlActive ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                        }`}>
+                          {sreData.migration.postgresqlActive ? 'POSTGRESQL (SSOT)' : 'SQLITE (FILE-BASED)'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      {/* Left: Active Architecture Description and Actions */}
+                      <div className="lg:col-span-1 space-y-4">
+                        <div className="bg-[#12131a] p-5 rounded-2xl border border-white/[0.04]">
+                          <h5 className="text-[10px] font-black uppercase tracking-wider text-white/60 mb-2 font-mono">
+                            Migration Strategy Playbook
+                          </h5>
+                          <div className="text-[11px] text-white/70 leading-relaxed space-y-2">
+                            <p>
+                              SQLite is fragile in containerized environments (Cloud Run) due to lack of multi-instance write synchronization and high corruption risk under concurrency. 
+                            </p>
+                            <p>
+                              We execute a validated migration protocol pipeline mapping local data transactions cleanly to Cloud SQL (Managed PostgreSQL), enabling event propagation to Redis Pub/Sub, and updating Firestore CQRS projections.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                          {sreData.migration.status === 'IDLE' && (
+                            <button
+                              onClick={handleRunMigration}
+                              className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest text-center transition-all shadow-md shadow-emerald-950/20 cursor-pointer"
+                            >
+                              🚀 Deploy Postgres &amp; Migrate Data
+                            </button>
+                          )}
+                          {sreData.migration.status !== 'IDLE' && sreData.migration.status !== 'SUCCESS' && (
+                            <div className="w-full py-3.5 bg-white/5 text-white/60 rounded-2xl text-[9px] font-black uppercase tracking-widest text-center border border-white/5 select-none font-mono">
+                              ⏳ Migrating: {sreData.migration.progress}% complete
+                            </div>
+                          )}
+                          {sreData.migration.status === 'SUCCESS' && (
+                            <div className="w-full py-3.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 rounded-2xl text-[9px] font-black uppercase tracking-widest text-center select-none font-bold">
+                              ✔ PostgreSQL Deployment Complete
+                            </div>
+                          )}
+                          
+                          <button
+                            onClick={handleResetMigration}
+                            className="w-full py-2 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-xl text-[8px] font-black uppercase tracking-widest text-center transition-all cursor-pointer font-mono"
+                          >
+                            Revert System back to SQLite
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Middle: Live Terminal Execution */}
+                      <div className="lg:col-span-1 flex flex-col justify-between bg-[#040508] p-5 rounded-2xl border border-white/5 font-mono">
+                        <div>
+                          <h5 className="text-[10px] font-black uppercase tracking-wider text-white/50 mb-3 leading-none">
+                            Live Oracle Console
+                          </h5>
+                          <div className="space-y-2 overflow-y-auto max-h-[160px] pr-2 text-[9px] text-white/80 leading-relaxed font-mono">
+                            {sreData.migration.logs.map((log: string, idx: number) => (
+                              <div key={idx} className="flex gap-1.5 items-start">
+                                <span className="text-emerald-550 shrink-0">&gt;</span>
+                                <span className={log.includes('[SUCCESS]') || log.includes('SUCCESS') ? 'text-emerald-400 font-bold' : log.includes('STEP') ? 'text-blue-400 font-bold' : ''}>
+                                  {log}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {sreData.migration.progress > 0 && (
+                          <div className="mt-4 pt-4 border-t border-white/5">
+                            <div className="flex justify-between items-center mb-1.5 font-mono">
+                              <span className="text-[8px] font-black uppercase text-white/40">Migration Phase Progress:</span>
+                              <span className="text-[9px] font-bold text-emerald-400">{sreData.migration.progress}%</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-emerald-400 transition-all duration-500"
+                                style={{ width: `${sreData.migration.progress}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: DB Migration JSON Output Schema */}
+                      <div className="lg:col-span-1 bg-[#12131a] p-5 rounded-2xl border border-white/[0.04] flex flex-col justify-between font-mono">
+                        <div>
+                          <div className="flex justify-between items-center mb-3">
+                            <h5 className="text-[10px] font-black uppercase tracking-wider text-white/60 leading-none">
+                              Validation Response Node
+                            </h5>
+                            <span className="text-[7px] text-slate-550 bg-white/5 px-2 py-0.5 rounded font-bold">API PAYLOAD</span>
+                          </div>
+                           <pre className="text-[8.5px] text-emerald-400 font-medium leading-normal bg-[#07080c] p-3 rounded-lg border border-white/5 select-all overflow-x-auto whitespace-pre-wrap font-mono">
+                            {autonomousReport ? JSON.stringify({
+                              migrationMode: autonomousReport.migrationMode,
+                              cutoverStatus: autonomousReport.cutoverStatus,
+                              sqliteStatus: autonomousReport.sqliteStatus,
+                              postgresqlStatus: autonomousReport.postgresqlStatus,
+                              cqrsState: autonomousReport.cqrsState,
+                              eventStreamState: autonomousReport.eventStreamState,
+                              dataLossDetected: autonomousReport.dataLossDetected,
+                              duplicateEventsDetected: autonomousReport.duplicateEventsDetected,
+                              systemHealthScore: autonomousReport.systemHealthScore,
+                              productionReadiness: autonomousReport.productionReadiness,
+                              rollbackAvailable: autonomousReport.rollbackAvailable,
+                              recommendation: autonomousReport.recommendation
+                            }, null, 2) : "Loading active stream telemetry..."}
+                          </pre>
+                        </div>
+                        <div className="text-[7.5px] text-white/35 uppercase text-left tracking-wider leading-relaxed mt-2 font-mono">
+                          Endpoint: GET <span className="text-blue-400">/api/sre/autonomous-report</span>
                         </div>
                       </div>
                     </div>

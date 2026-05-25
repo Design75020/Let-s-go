@@ -325,6 +325,16 @@ router.post('/api/sre/run-validation', (req, res) => {
   res.json({ success: true, status: sreSimulationEngine.getStatus(), report });
 });
 
+router.post('/api/sre/migrate-db', (req, res) => {
+  sreSimulationEngine.startMigration();
+  res.json({ success: true, status: sreSimulationEngine.getStatus() });
+});
+
+router.post('/api/sre/reset-migration', (req, res) => {
+  sreSimulationEngine.resetMigration();
+  res.json({ success: true, status: sreSimulationEngine.getStatus() });
+});
+
 router.get('/api/sre/autonomous-report', (req, res) => {
   res.json(sreSimulationEngine.getAutonomousReport());
 });
