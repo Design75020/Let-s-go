@@ -52,17 +52,27 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
+      - name: Initialize SQLite Database
+        run: npx prisma db push --skip-generate
+        env:
+          DATABASE_URL: "file:./prisma/dev.db"
+
       - name: Start Background SRE Test Instance
         run: |
           PORT=3000 npm run dev &
           echo "SRE local target listening on port 3000"
-          sleep 5
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:3000/health && break || sleep 2
+          done
+        env:
+          DATABASE_URL: "file:./prisma/dev.db"
 
       # Run against the local background server OR Staging URL if provided
       - name: Run SRE Gate Simulation
         run: node scripts/verify-live.js
         env:
           TARGET_URL: ${{ secrets.STAGING_URL || 'http://localhost:3000' }}
+          DATABASE_URL: "file:./prisma/dev.db"
           SRE_MODE: mvp
 
   cd:

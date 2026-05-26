@@ -3,7 +3,7 @@
  * Validates active database connection engines and queries consistency checks.
  */
 
-const axios = require("axios");
+import axios from 'axios';
 
 const TARGET_URL = process.env.TARGET_URL || "http://localhost:3000";
 

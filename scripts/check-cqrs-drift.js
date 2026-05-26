@@ -3,7 +3,7 @@
  * Detects read/write model state synchronization lags and discrepancies.
  */
 
-const axios = require("axios");
+import axios from 'axios';
 
 const TARGET_URL = process.env.TARGET_URL || "http://localhost:3000";
 

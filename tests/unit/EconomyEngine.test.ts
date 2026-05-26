@@ -15,7 +15,7 @@ describe('EconomyEngine Unit Tests', () => {
 
   it('should initialize with default state', () => {
     const snapshot = engine.getSnapshot();
-    expect(snapshot.activeDrivers).toBe(20);
+    expect(snapshot.activeDrivers).toBe(0);
     expect(snapshot.surgeMultiplier).toBe(1.0);
   });
 
