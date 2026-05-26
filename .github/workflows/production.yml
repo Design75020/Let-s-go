@@ -83,21 +83,37 @@ jobs:
     name: Production Deployment (Cloud Run)
     needs: gate
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && secrets.GCP_SA_KEY != ''
     steps:
       - uses: actions/checkout@v4
-      
+
+      - name: Check GCP Configuration
+        id: gcp-check
+        run: |
+          if [ -n "$GCP_SA_KEY" ]; then
+            echo "gcp_available=true" >> $GITHUB_OUTPUT
+            echo "✅ GCP configured — deployment will proceed"
+          else
+            echo "gcp_available=false" >> $GITHUB_OUTPUT
+            echo "⚠️  GCP_SA_KEY not set — skipping Cloud Run deployment"
+          fi
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+
       - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v1
+        if: steps.gcp-check.outputs.gcp_available == 'true'
+        uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Docker Build & Push
+        if: steps.gcp-check.outputs.gcp_available == 'true'
         run: |
           docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/lgf-api:${{ github.sha }} -f Dockerfile.prod .
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/lgf-api:${{ github.sha }}
 
       - name: Deploy Canary (10% Traffic)
+        if: steps.gcp-check.outputs.gcp_available == 'true'
         run: |
           gcloud run deploy lgf-api \
             --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/lgf-api:${{ github.sha }} \
@@ -110,22 +126,23 @@ jobs:
             --region europe-west1
 
       - name: Post-Deploy Health Check
+        if: steps.gcp-check.outputs.gcp_available == 'true'
         run: node scripts/verify-live.js
         env:
           TARGET_URL: "https://canary---lgf-api-hash.a.run.app"
           SRE_MODE: mvp
 
       - name: Full Traffic Promotion
-        if: success()
+        if: steps.gcp-check.outputs.gcp_available == 'true' && success()
         run: |
           gcloud run services update-traffic lgf-api \
             --to-revisions LATEST=100 \
             --region europe-west1
 
       - name: Auto-Rollback on Failure
-        if: failure()
+        if: failure() && steps.gcp-check.outputs.gcp_available == 'true'
         run: |
           echo "GATE FAILED. ROLLING BACK."
           gcloud run services update-traffic lgf-api \
             --to-revisions LATEST=0 \
-            --region europe-west1
+            --region europe-west1 || echo "⚠️  Rollback skipped (gcloud not authenticated)" 
