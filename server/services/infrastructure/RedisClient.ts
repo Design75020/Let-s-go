@@ -61,7 +61,24 @@ class RedisManager {
       hset: async () => 1,
       hget: async () => null,
       hdel: async () => 1,
-      xinfo: async () => null,
+      // FIX: xinfo mock must return a valid structure to avoid crash in getStreamInfo
+      xinfo: async (...args: any[]) => {
+        // When called as xinfo('STREAM', domain), return a mock stream info array
+        if (args[0] === 'STREAM') {
+          return [
+            'length', 0,
+            'radix-tree-keys', 0,
+            'radix-tree-nodes', 0,
+            'last-generated-id', '0-0',
+            'groups', 0,
+            'first-entry', null,
+            'last-entry', null
+          ];
+        }
+        return null;
+      },
+      // FIX: xcreategroup/xgroup mock to avoid crash on stream group creation
+      xcreategroup: async () => 'OK',
       xgroup: async () => 'OK',
       xlen: async () => 0,
       del: async () => 1,

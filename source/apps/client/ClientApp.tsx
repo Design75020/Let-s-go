@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ShoppingBag, MapPin, Star, Clock, ChevronLeft, Plus, Minus, CheckCircle2, LogOut, Globe } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { db, handleFirestoreError } from '../../lib/firebase';
-import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import { collection, onSnapshot, query } from 'firebase/firestore';
+import { OrdersAPI } from '../../services/apiService';
 import { useAuth } from '../../context/AuthContext';
 import { OrderApiService } from '../../services/orderApiService';
 import { Card, Button, SectionTitle } from '../../shared/ui';
@@ -32,17 +33,24 @@ export default function ClientApp({ isEmbedded = false }: { isEmbedded?: boolean
     return () => unsubscribe();
   }, []);
 
+  // FIX (Split Brain): User orders are now fetched from the backend API (canonical SSoT)
   useEffect(() => {
     if (!user || activeView !== 'orders') return;
-    const q = query(
-      collection(db, 'orders'), 
-      where('clientId', '==', user.uid),
-      orderBy('createdAt', 'desc')
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setUserOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (err) => handleFirestoreError(err, 'list' as any, 'orders'));
-    return () => unsubscribe();
+    const fetchUserOrders = async () => {
+      try {
+        const allOrders = await OrdersAPI.list();
+        // Filter orders belonging to this user (by userId or clientId)
+        const myOrders = allOrders.filter((o: any) =>
+          o.userId === user.uid || o.clientId === user.uid
+        );
+        setUserOrders(myOrders);
+      } catch (err) {
+        console.error('User orders fetch error:', err);
+      }
+    };
+    fetchUserOrders();
+    const interval = setInterval(fetchUserOrders, 5000); // Poll every 5s
+    return () => clearInterval(interval);
   }, [user, activeView]);
 
   useEffect(() => {

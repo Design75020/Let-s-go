@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { onAuthStateChanged, signOut, signInWithPopup, signInAnonymously } from 'firebase/auth';
+import { onAuthStateChanged, signOut, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, googleProvider, db, getUserProfile, createUserProfile } from '../lib/firebase';
 
@@ -36,29 +36,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  // Dev accounts: email → password mapping for direct login
+  const DEV_ACCOUNTS: Record<string, { password: string; role: string }> = {
+    'admin@letsgofood.fr':    { password: 'v15stable', role: 'admin' },
+    'admin@lgf.com':          { password: 'v15stable', role: 'admin' },
+    'merchant@lgf.com':       { password: 'v15stable', role: 'merchant' },
+    'driver@lgf.com':         { password: 'v15stable', role: 'driver' },
+    'client@lgf.com':         { password: 'v15stable', role: 'client' },
+    'letsgofood26@gmail.com': { password: 'v15stable', role: 'admin' },
+    'u6860348073@id.gle':     { password: 'v15stable', role: 'admin' },
+  };
+
   const loginAsEmail = async (email: string, role: string) => {
     setLoading(true);
     try {
-      // Use Anonymous Login as a bridge for the dev environment to have a valid request.auth uid
-      const result = await signInAnonymously(auth);
-      const isDevEmail = email === 'letsgofood26@gmail.com' || 
-                         email === 'admin@lgf.com' || 
-                         email === 'u6860348073@id.gle';
+      const devAccount = DEV_ACCOUNTS[email];
+      const password = devAccount?.password || 'v15stable';
+      const effectiveRole = devAccount?.role || role;
 
+      let firebaseUser: any;
+      try {
+        // FIX: Use signInWithEmailAndPassword instead of disabled signInAnonymously
+        const result = await signInWithEmailAndPassword(auth, email, password);
+        firebaseUser = result.user;
+      } catch (signInErr: any) {
+        // Auto-create account if it doesn't exist yet
+        if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
+          const result = await createUserWithEmailAndPassword(auth, email, password);
+          firebaseUser = result.user;
+        } else {
+          throw signInErr;
+        }
+      }
+
+      const isDevEmail = !!devAccount;
       const profile = {
         name: email.split('@')[0],
-        email: email,
-        role: role,
+        email,
+        role: effectiveRole,
         isDev: isDevEmail,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       };
-
-      // Force create/update the profile in Firestore so rules can see the role
-      await setDoc(doc(db, 'users', result.user.uid), profile);
-      
-      setUser({ ...profile, uid: result.user.uid });
+      await setDoc(doc(db, 'users', firebaseUser.uid), profile, { merge: true });
+      setUser({ ...profile, uid: firebaseUser.uid });
     } catch (err) {
-      console.error('Anonymous login failed', err);
+      console.error('Email login failed', err);
       throw err;
     } finally {
       setLoading(false);

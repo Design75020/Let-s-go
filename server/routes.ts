@@ -35,14 +35,14 @@ router.post('/api/auth/login', async (req, res) => {
 
 // --- STABLE V15 API ---
 
-// Orders
-router.get('/api/orders', orderController.listRecent);
-router.post('/api/orders', orderController.create);
-router.get('/api/orders/:id', orderController.getOne);
-router.patch('/api/orders/:id/accept', orderController.accept);
-router.patch('/api/orders/:id/ready', orderController.setReady);
-router.post('/api/orders/:id/claim', orderController.claim);
-router.patch('/api/orders/:id/complete', orderController.complete);
+// Orders — FIX: Protected with authenticate middleware (was open to unauthenticated requests)
+router.get('/api/orders', authenticate, orderController.listRecent);
+router.post('/api/orders', authenticate, orderController.create);
+router.get('/api/orders/:id', authenticate, orderController.getOne);
+router.patch('/api/orders/:id/accept', authenticate, orderController.accept);
+router.patch('/api/orders/:id/ready', authenticate, orderController.setReady);
+router.post('/api/orders/:id/claim', authenticate, orderController.claim);
+router.patch('/api/orders/:id/complete', authenticate, orderController.complete);
 
 // Diagnostics API (Hardened RBAC)
 router.get('/api/diagnostics', authenticate, authorize([UserRole.ADMIN, UserRole.OPERATOR]), async (req, res) => {
@@ -288,34 +288,34 @@ router.get('/api/agents/runs/:id', (req, res) => {
 });
 
 // --- LETSGOFOOD V15 PRODUCTION SRE & CHAOS API ---
-
-router.get('/api/sre/status', (req, res) => {
+// FIX: SRE routes protected with ADMIN/OPERATOR authorization
+router.get('/api/sre/status', authenticate, authorize([UserRole.ADMIN, UserRole.OPERATOR]), (req, res) => {
   res.json(sreSimulationEngine.getStatus());
 });
 
-router.post('/api/sre/trigger-load', (req, res) => {
+router.post('/api/sre/trigger-load', authenticate, authorize([UserRole.ADMIN, UserRole.OPERATOR]), (req, res) => {
   const { loadUsers, loadDrivers, orderSpike } = req.body;
   sreSimulationEngine.applyLoad(Number(loadUsers), Number(loadDrivers), Number(orderSpike));
   res.json({ success: true, status: sreSimulationEngine.getStatus() });
 });
 
-router.post('/api/sre/toggle-chaos', (req, res) => {
+router.post('/api/sre/toggle-chaos', authenticate, authorize([UserRole.ADMIN]), (req, res) => {
   const { type, active } = req.body;
   sreSimulationEngine.toggleChaos(type, active);
   res.json({ success: true, status: sreSimulationEngine.getStatus() });
 });
 
-router.post('/api/sre/rebuild', (req, res) => {
+router.post('/api/sre/rebuild', authenticate, authorize([UserRole.ADMIN]), (req, res) => {
   sreSimulationEngine.rebuildProjections();
   res.json({ success: true, status: sreSimulationEngine.getStatus() });
 });
 
-router.post('/api/sre/auto-heal', (req, res) => {
+router.post('/api/sre/auto-heal', authenticate, authorize([UserRole.ADMIN, UserRole.OPERATOR]), (req, res) => {
   sreSimulationEngine.runAutoHealing();
   res.json({ success: true, status: sreSimulationEngine.getStatus(), message: "Draining DLQ and reviving workers..." });
 });
 
-router.post('/api/sre/run-validation', (req, res) => {
+router.post('/api/sre/run-validation', authenticate, authorize([UserRole.ADMIN]), (req, res) => {
   const { loadUsers, loadDrivers, orderSpike } = req.body;
   const report = sreSimulationEngine.runFullValidationSuite(
     Number(loadUsers || 1500),
@@ -325,37 +325,37 @@ router.post('/api/sre/run-validation', (req, res) => {
   res.json({ success: true, status: sreSimulationEngine.getStatus(), report });
 });
 
-router.post('/api/sre/migrate-db', (req, res) => {
+router.post('/api/sre/migrate-db', authenticate, authorize([UserRole.ADMIN]), (req, res) => {
   sreSimulationEngine.startMigration();
   res.json({ success: true, status: sreSimulationEngine.getStatus() });
 });
 
-router.post('/api/sre/reset-migration', (req, res) => {
+router.post('/api/sre/reset-migration', authenticate, authorize([UserRole.ADMIN]), (req, res) => {
   sreSimulationEngine.resetMigration();
   res.json({ success: true, status: sreSimulationEngine.getStatus() });
 });
 
-router.post('/api/sre/canary-deploy', (req, res) => {
+router.post('/api/sre/canary-deploy', authenticate, authorize([UserRole.ADMIN]), (req, res) => {
   sreSimulationEngine.startCanaryDeploy();
   res.json({ success: true, status: sreSimulationEngine.getStatus() });
 });
 
-router.post('/api/sre/canary-ramp', (req, res) => {
+router.post('/api/sre/canary-ramp', authenticate, authorize([UserRole.ADMIN]), (req, res) => {
   sreSimulationEngine.startCanaryRamp();
   res.json({ success: true, status: sreSimulationEngine.getStatus() });
 });
 
-router.post('/api/sre/canary-rollback', (req, res) => {
+router.post('/api/sre/canary-rollback', authenticate, authorize([UserRole.ADMIN]), (req, res) => {
   sreSimulationEngine.triggerCanaryRollback();
   res.json({ success: true, status: sreSimulationEngine.getStatus() });
 });
 
-router.post('/api/sre/canary-reset', (req, res) => {
+router.post('/api/sre/canary-reset', authenticate, authorize([UserRole.ADMIN]), (req, res) => {
   sreSimulationEngine.resetCanary();
   res.json({ success: true, status: sreSimulationEngine.getStatus() });
 });
 
-router.get('/api/sre/autonomous-report', (req, res) => {
+router.get('/api/sre/autonomous-report', authenticate, authorize([UserRole.ADMIN, UserRole.OPERATOR]), (req, res) => {
   res.json(sreSimulationEngine.getAutonomousReport());
 });
 

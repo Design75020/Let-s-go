@@ -18,7 +18,8 @@ import {
 } from 'lucide-react';
 import { Card, SectionTitle, Button } from '../../shared/ui';
 import { db, handleFirestoreError } from '../../lib/firebase';
-import { collection, query, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { OrdersAPI } from '../../services/apiService';
 import { useAuth } from '../../context/AuthContext';
 
 export default function AdminApp() {
@@ -29,27 +30,36 @@ export default function AdminApp() {
   const [isPlacing, setIsPlacing] = useState(false);
   const [message, setMessage] = useState('');
 
+  // FIX (Split Brain): Orders are now fetched from the backend API (canonical SSoT Prisma/SQLite)
+  // Restaurants and users remain in Firestore (static config data, no order state)
+  const fetchOrders = async () => {
+    try {
+      const data = await OrdersAPI.list();
+      setOrders(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Orders fetch error:', err);
+    }
+  };
+
   useEffect(() => {
-    // 1. Sync restaurants in real time
+    // 1. Sync restaurants in real time (Firestore — static config data)
     const unsubRestos = onSnapshot(collection(db, 'restaurants'), (snapshot) => {
-      setRestaurants(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setRestaurants(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     }, (err) => console.error('Resto sync err:', err));
 
-    // 2. Sync users in real time
+    // 2. Sync users in real time (Firestore — auth profiles)
     const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
-      setUsers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setUsers(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     }, (err) => console.error('User sync err:', err));
 
-    // 3. Sync orders in real time
-    const qOrders = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
-    const unsubOrders = onSnapshot(qOrders, (snapshot) => {
-      setOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (err) => handleFirestoreError(err, 'list' as any, 'orders'));
+    // 3. FIX: Orders from backend API (canonical SSoT — Prisma/SQLite)
+    fetchOrders();
+    const ordersInterval = setInterval(fetchOrders, 5000); // Poll every 5s for live updates
 
     return () => {
       unsubRestos();
       unsubUsers();
-      unsubOrders();
+      clearInterval(ordersInterval);
     };
   }, []);
 

@@ -2,8 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navigation, Bike, Package, CheckCircle, MapPin, List } from 'lucide-react';
-import { db } from '../../lib/firebase';
-import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { OrdersAPI } from '../../services/apiService';
 import { useAuth } from '../../context/AuthContext';
 import { SectionTitle, Card, Button } from '../../shared/ui';
 
@@ -12,34 +11,35 @@ export default function DriverApp() {
   const [myTasks, setMyTasks] = useState<any[]>([]);
   const { user } = useAuth();
 
+  // FIX (Split Brain): Orders are now fetched from the backend API (canonical SSoT)
+  const fetchTasks = async () => {
+    if (!user) return;
+    try {
+      const allOrders = await OrdersAPI.list();
+      const available = allOrders.filter((o: any) =>
+        ['READY', 'ready'].includes(o.status)
+      );
+      const mine = allOrders.filter((o: any) =>
+        ['PICKED_UP', 'picked_up'].includes(o.status) && o.driverId === user.uid
+      );
+      setAvailableTasks(available);
+      setMyTasks(mine);
+    } catch (err) {
+      console.error('Driver tasks fetch error:', err);
+    }
+  };
+
   useEffect(() => {
     if (!user) return;
-    
-    // Available: status is 'ready' or 'READY'
-    const qAvailable = query(collection(db, 'orders'), where('status', 'in', ['ready', 'READY']));
-    const unsubAvailable = onSnapshot(qAvailable, (snapshot) => {
-      setAvailableTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    // My active: status is 'picked_up' or 'PICKED_UP' and driverId is current user
-    const qMy = query(collection(db, 'orders'), where('status', 'in', ['picked_up', 'PICKED_UP']), where('driverId', '==', user.uid));
-    const unsubMy = onSnapshot(qMy, (snapshot) => {
-      setMyTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    return () => {
-      unsubAvailable();
-      unsubMy();
-    };
+    fetchTasks();
+    const interval = setInterval(fetchTasks, 4000); // Poll every 4s for live updates
+    return () => clearInterval(interval);
   }, [user]);
 
   const acceptTask = async (orderId: string) => {
     try {
-      await fetch(`/api/orders/${orderId}/claim`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ driverId: user?.uid })
-      });
+      await OrdersAPI.claim(orderId, user?.uid || '');
+      await fetchTasks(); // Refresh immediately after action
     } catch (err) {
       console.error('Failed to claim mission in canonical SSoT', err);
     }
@@ -47,10 +47,8 @@ export default function DriverApp() {
 
   const deliverOrder = async (orderId: string) => {
     try {
-      await fetch(`/api/orders/${orderId}/complete`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' }
-      });
+      await OrdersAPI.complete(orderId);
+      await fetchTasks(); // Refresh immediately after action
     } catch (err) {
       console.error('Failed to complete delivery in canonical SSoT', err);
     }
