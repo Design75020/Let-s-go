@@ -26,10 +26,39 @@ jobs:
       - name: Execute Codex Structural Validation
         run: npm run codex:validate
 
+      - name: Build Application
+        run: npm run build
+
+      - name: Start Application Server (background)
+        run: |
+          export DATABASE_URL="file:./dev.db"
+          npx prisma generate
+          npx prisma db push --skip-generate
+          PORT=8080 node dist/server.js &
+          echo "SERVER_PID=$!" >> $GITHUB_ENV
+        env:
+          NODE_ENV: production
+          PORT: "8080"
+          DATABASE_URL: "file:./dev.db"
+          JWT_SECRET: "ci-test-secret-key-not-for-production"
+          FIREBASE_PROJECT_ID: "ci-test-project"
+
+      - name: Wait for Server to be Ready
+        run: |
+          echo "Waiting for server on port 8080..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/api/health > /dev/null 2>&1; then
+              echo "✅ Server is ready after ${i}s"
+              break
+            fi
+            echo "  Attempt $i/30..."
+            sleep 2
+          done
+
       - name: Execute Live Endpoints & SRE Gates
         run: npm run codex:gate
         env:
-          TARGET_URL: ${{ secrets.STAGING_URL || 'http://localhost:3000' }}
+          TARGET_URL: "http://localhost:8080"
 
       - name: Execute Transactional Ledger Consistency Audit
         run: npm run codex:audit
