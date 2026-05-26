@@ -1,12 +1,8 @@
-import { PrismaClient } from "@prisma/client";
-
 /**
- * Prisma 7+ Configuration Layer
- * Centralized DB client configuration
+ * Prisma 7+ Configuration
+ * This file must NOT import PrismaClient before prisma generate has run.
+ * Use defineConfig for schema/migration configuration only.
  */
-
-export const prisma = new PrismaClient({
-  log: ["error", "warn"],
-});
-
-export default prisma;
+export default {
+  schema: "./prisma/schema.prisma",
+};

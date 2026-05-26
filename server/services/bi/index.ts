@@ -8,9 +8,10 @@ import { v16Engine } from './V16Engine';
 import { economyWorker } from './EconomyWorker';
 import { anomalyWorker } from './AnomalyWorker';
 import { costWorker } from './CostWorker';
+import { logger } from '../infrastructure/Observability';
 
 export function initializeAutonomousSystem() {
-  console.log('🤖 Initializing V15/V16 Hardened Production Platform...');
+  logger.info('🤖 Initializing V15/V16 Hardened Production Platform...');
   
   // They are already initialized as singletons, but we call them to ensure execution
   [
@@ -19,7 +20,7 @@ export function initializeAutonomousSystem() {
     v16Engine, economyWorker, anomalyWorker, costWorker
   ];
   
-  console.log('✅ Hardened Autonomous System Online.');
+  logger.info('✅ Hardened Autonomous System Online.');
 }
 
 export {

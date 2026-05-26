@@ -3,6 +3,7 @@ import cron from 'node-cron';
 import { eventBus, BIEvents } from './EventBus';
 import { economyEngine } from './EconomyEngine';
 import { costController } from './DecisionEngine';
+import { logger } from '../infrastructure/Observability';
 
 export class BatchProcessor {
   private history: any[] = [];
@@ -28,7 +29,7 @@ export class BatchProcessor {
       type: 'BATCH_5M'
     };
 
-    console.log('[BATCH] Processing 5-minute BI aggregation...');
+    logger.info('[BATCH] Processing 5-minute BI aggregation...');
     this.history.push(aggregated);
     if (this.history.length > 100) this.history.shift();
 

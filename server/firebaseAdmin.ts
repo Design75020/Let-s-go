@@ -3,6 +3,7 @@ import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
 import path from 'path';
 import fs from 'fs';
+import { logger } from './services/infrastructure/Observability';
 
 let projectId = process.env.FIREBASE_PROJECT_ID || 'letsgofood-v10';
 let databaseId = process.env.FIRESTORE_DATABASE_ID || '(default)';
@@ -15,7 +16,7 @@ try {
     if (config.firestoreDatabaseId) databaseId = config.firestoreDatabaseId;
   }
 } catch (e: any) {
-  console.warn("Failed to load firebase config from json file, using env fallbacks:", e.message);
+  logger.warn("Failed to load firebase config from json file, using env fallbacks:", e.message);
 }
 
 let app: admin.app.App;
@@ -25,12 +26,12 @@ try {
     app = admin.initializeApp({
       projectId: projectId
     });
-    console.log('Firebase Admin initialized with projectId:', projectId);
+    logger.info({ projectId }, 'Firebase Admin initialized with projectId');
   } else {
     app = admin.app();
   }
 } catch (error) {
-  console.error('Firebase Admin initialization error:', error);
+  logger.error({ error }, 'Firebase Admin initialization error');
   app = admin.apps[0] || admin.initializeApp({ projectId });
 }
 

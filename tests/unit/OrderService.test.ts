@@ -14,6 +14,12 @@ vi.mock('../../server/services/infrastructure/EventStream', () => ({
 }));
 
 vi.mock('../../server/services/infrastructure/Observability', () => ({
+  metrics: {
+    increment: vi.fn(),
+    gauge: vi.fn(),
+    histogram: vi.fn(),
+    timing: vi.fn(),
+  },
   logger: {
     info: vi.fn(),
     error: vi.fn(),
