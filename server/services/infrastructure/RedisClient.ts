@@ -60,7 +60,12 @@ class RedisManager {
       expire: async () => 1,
       hset: async () => 1,
       hget: async () => null,
-      hdel: async () => 1
+      hdel: async () => 1,
+      xinfo: async () => null,
+      xgroup: async () => 'OK',
+      xlen: async () => 0,
+      del: async () => 1,
+      keys: async () => []
     };
   }
 }
