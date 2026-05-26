@@ -31,16 +31,14 @@ jobs:
 
       - name: Start Application Server (background)
         run: |
-          export DATABASE_URL="file:./dev.db"
-          npx prisma generate
-          npx prisma db push --skip-generate
+          DATABASE_URL="file:./prisma/ci-codex.db" npx prisma db push --skip-generate --accept-data-loss
           PORT=8080 node dist/server.js &
           echo "SERVER_PID=$!" >> $GITHUB_ENV
         env:
           NODE_ENV: production
           PORT: "8080"
-          DATABASE_URL: "file:./dev.db"
-          JWT_SECRET: "ci-test-secret-key-not-for-production"
+          DATABASE_URL: "file:./prisma/ci-codex.db"
+          JWT_SECRET: "ci-codex-secret-key"
           FIREBASE_PROJECT_ID: "ci-test-project"
 
       - name: Wait for Server to be Ready

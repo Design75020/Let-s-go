@@ -31,7 +31,6 @@ jobs:
         run: npm run test
         
       - name: AI Security Scan
-        if: ${{ secrets.GEMINI_API_KEY != '' }}
         run: npm run ai:scan
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
