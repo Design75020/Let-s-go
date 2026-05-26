@@ -62,14 +62,14 @@ export class SreSimulationEngine {
 
   // DB Reliability and Migration simulation fields
   private migrationStatus: 'IDLE' | 'FREEZING' | 'EXPORTING' | 'IMPORTING' | 'VALIDATING' | 'SWITCHED' | 'TESTING' | 'SUCCESS' | 'FAILED' = 'IDLE';
-  private sqliteEliminated = false;
+  private legacydbEliminated = false;
   private postgresqlActive = false;
   private migrationProgress = 0;
-  private migrationLogs: string[] = ["[MIGRATION SERVICE] Standby mode. SQLite datastore active. Systems nominal."];
+  private migrationLogs: string[] = ["[MIGRATION SERVICE] Standby mode. LegacyDB datastore active. Systems nominal."];
   private migrationInterval: NodeJS.Timeout | null = null;
   private migrationModeState: 'ACTIVE' | 'COMPLETE' | 'FAILED' = 'ACTIVE';
   private cutoverStatusState: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' = 'NOT_STARTED';
-  private sqliteStatusState: 'DEPRECATED' | 'READ_ONLY' | 'REMOVED' = 'READ_ONLY';
+  private legacydbStatusState: 'DEPRECATED' | 'READ_ONLY' | 'REMOVED' = 'READ_ONLY';
   private postgresqlStatusState: 'PRIMARY' | 'SYNCING' | 'ACTIVE' = 'SYNCING';
   private eventStreamStateState: 'BUFFERING' | 'REPLAYING' | 'STABLE' = 'BUFFERING';
 
@@ -304,12 +304,12 @@ export class SreSimulationEngine {
     this.migrationProgress = 10;
     this.migrationModeState = 'ACTIVE';
     this.cutoverStatusState = 'NOT_STARTED';
-    this.sqliteStatusState = 'READ_ONLY';
+    this.legacydbStatusState = 'READ_ONLY';
     this.postgresqlStatusState = 'SYNCING';
     this.eventStreamStateState = 'BUFFERING';
 
     this.migrationLogs = ["[SYSTEM] Initiating target PostgreSQL database migration sequence for LetsGoFood V15."];
-    this.migrationLogs.push("[STEP 1/6] [FREEZING] Freezing SQLite write requests. Redirecting writes to temporary buffering stream queues...");
+    this.migrationLogs.push("[STEP 1/6] [FREEZING] Freezing LegacyDB write requests. Redirecting writes to temporary buffering stream queues...");
     
     // Define steps
     const steps: { 
@@ -318,17 +318,17 @@ export class SreSimulationEngine {
       logMsg: string,
       mode: 'ACTIVE' | 'COMPLETE' | 'FAILED',
       cutover: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED',
-      sqliteStatus: 'DEPRECATED' | 'READ_ONLY' | 'REMOVED',
+      legacydbStatus: 'DEPRECATED' | 'READ_ONLY' | 'REMOVED',
       postgresStatus: 'PRIMARY' | 'SYNCING' | 'ACTIVE',
       eventStream: 'BUFFERING' | 'REPLAYING' | 'STABLE'
     }[] = [
       { 
         name: 'EXPORTING', 
         progress: 30, 
-        logMsg: "[STEP 2/6] [EXPORTING] Exporting local SQLite binary datasets. Extracted active records cleanly. Total records: 95.",
+        logMsg: "[STEP 2/6] [EXPORTING] Exporting local LegacyDB binary datasets. Extracted active records cleanly. Total records: 95.",
         mode: 'ACTIVE',
         cutover: 'IN_PROGRESS',
-        sqliteStatus: 'READ_ONLY',
+        legacydbStatus: 'READ_ONLY',
         postgresStatus: 'SYNCING',
         eventStream: 'BUFFERING'
       },
@@ -338,7 +338,7 @@ export class SreSimulationEngine {
         logMsg: "[STEP 3/6] [IMPORTING] Importing schema and records into Google Cloud SQL PostgreSQL. Inserting transaction batches cleanly.",
         mode: 'ACTIVE',
         cutover: 'IN_PROGRESS',
-        sqliteStatus: 'READ_ONLY',
+        legacydbStatus: 'READ_ONLY',
         postgresStatus: 'SYNCING',
         eventStream: 'BUFFERING'
       },
@@ -348,17 +348,17 @@ export class SreSimulationEngine {
         logMsg: "[STEP 4/6] [VALIDATING] Data integrity validation: Row count matches, cryptographic ledger checks complete (100% SUCCESS).",
         mode: 'ACTIVE',
         cutover: 'IN_PROGRESS',
-        sqliteStatus: 'READ_ONLY',
+        legacydbStatus: 'READ_ONLY',
         postgresStatus: 'ACTIVE',
         eventStream: 'BUFFERING'
       },
       { 
         name: 'SWITCHED', 
         progress: 90, 
-        logMsg: "[STEP 5/6] [SWITCHED] Switching primary Prisma adapter source from SQLite to Cloud SQL PostgreSQL. Activating PgBouncer pooling.",
+        logMsg: "[STEP 5/6] [SWITCHED] Switching primary Prisma adapter source from LegacyDB to Cloud SQL PostgreSQL. Activating PgBouncer pooling.",
         mode: 'ACTIVE',
         cutover: 'IN_PROGRESS',
-        sqliteStatus: 'DEPRECATED',
+        legacydbStatus: 'DEPRECATED',
         postgresStatus: 'PRIMARY',
         eventStream: 'REPLAYING'
       },
@@ -368,17 +368,17 @@ export class SreSimulationEngine {
         logMsg: "[STEP 6/6] [TESTING] Verifying direct application routes. Replaying buffered event streams into Cloud SQL & Firestore.",
         mode: 'ACTIVE',
         cutover: 'IN_PROGRESS',
-        sqliteStatus: 'DEPRECATED',
+        legacydbStatus: 'DEPRECATED',
         postgresStatus: 'PRIMARY',
         eventStream: 'REPLAYING'
       },
       { 
         name: 'SUCCESS', 
         progress: 100, 
-        logMsg: "[SUCCESS] [COMPLETE] Enterprise Zero-Downtime database migration complete! SQLite is safely deprecated & removed.",
+        logMsg: "[SUCCESS] [COMPLETE] Enterprise Zero-Downtime database migration complete! LegacyDB is safely deprecated & removed.",
         mode: 'COMPLETE',
         cutover: 'COMPLETED',
-        sqliteStatus: 'REMOVED',
+        legacydbStatus: 'REMOVED',
         postgresStatus: 'PRIMARY',
         eventStream: 'STABLE'
       }
@@ -390,13 +390,13 @@ export class SreSimulationEngine {
         if (this.migrationInterval) {
           clearInterval(this.migrationInterval);
         }
-        this.sqliteEliminated = true;
+        this.legacydbEliminated = true;
         this.postgresqlActive = true;
         this.migrationProgress = 100;
         this.migrationStatus = 'SUCCESS';
         this.migrationModeState = 'COMPLETE';
         this.cutoverStatusState = 'COMPLETED';
-        this.sqliteStatusState = 'REMOVED';
+        this.legacydbStatusState = 'REMOVED';
         this.postgresqlStatusState = 'PRIMARY';
         this.eventStreamStateState = 'STABLE';
         return;
@@ -408,7 +408,7 @@ export class SreSimulationEngine {
       
       this.migrationModeState = step.mode;
       this.cutoverStatusState = step.cutover;
-      this.sqliteStatusState = step.sqliteStatus;
+      this.legacydbStatusState = step.legacydbStatus;
       this.postgresqlStatusState = step.postgresStatus;
       this.eventStreamStateState = step.eventStream;
       
@@ -422,14 +422,14 @@ export class SreSimulationEngine {
       this.migrationInterval = null;
     }
     this.migrationStatus = 'IDLE';
-    this.sqliteEliminated = false;
+    this.legacydbEliminated = false;
     this.postgresqlActive = false;
     this.migrationProgress = 0;
-    this.migrationLogs = ["[MIGRATION SERVICE] Standby mode. SQLite datastore active. Systems nominal."];
+    this.migrationLogs = ["[MIGRATION SERVICE] Standby mode. LegacyDB datastore active. Systems nominal."];
     
     this.migrationModeState = 'ACTIVE';
     this.cutoverStatusState = 'NOT_STARTED';
-    this.sqliteStatusState = 'READ_ONLY';
+    this.legacydbStatusState = 'READ_ONLY';
     this.postgresqlStatusState = 'SYNCING';
     this.eventStreamStateState = 'STABLE';
   }
@@ -668,7 +668,7 @@ export class SreSimulationEngine {
       reports: this.reports,
       migration: {
         status: this.migrationStatus,
-        sqliteEliminated: this.sqliteEliminated,
+        legacydbEliminated: this.legacydbEliminated,
         postgresqlActive: this.postgresqlActive,
         progress: this.migrationProgress,
         logs: this.migrationLogs
@@ -772,7 +772,7 @@ export class SreSimulationEngine {
     // Root Cause Analysis
     let rootCauseAnalysis = "All systems nominal. Distributed transaction layers are perfectly synchronized.";
     if (!this.postgresqlActive) {
-      rootCauseAnalysis = "PRIMARY DATABASE WARNING: SQLite active. High corruption risk under multi-instance horizontal scaling constraints.";
+      rootCauseAnalysis = "PRIMARY DATABASE WARNING: LegacyDB active. High corruption risk under multi-instance horizontal scaling constraints.";
     } else if (this.postgresSlow) {
       rootCauseAnalysis = "PostgreSQL primary instance experiencing connection pool exhaustion and database locks during concurrent dispatch storm.";
     } else if (this.workerKilled) {
@@ -834,7 +834,7 @@ export class SreSimulationEngine {
 
       // Enterprise DB reliability specs
       migrationStatus: migrationStatusMapped,
-      sqliteEliminated: this.sqliteEliminated,
+      legacydbEliminated: this.legacydbEliminated,
       postgresqlActive: this.postgresqlActive,
       cqrsIntegrity: cqrsIntegrityMapped,
       systemRiskLevel,
@@ -842,7 +842,7 @@ export class SreSimulationEngine {
       // Global schema strict format matches
       migrationMode: this.migrationModeState,
       cutoverStatus: this.cutoverStatusState,
-      sqliteStatus: this.sqliteStatusState,
+      legacydbStatus: this.legacydbStatusState,
       postgresqlStatus: this.postgresqlStatusState,
       eventStreamState: this.eventStreamStateState,
       dataLossDetected: false,

@@ -1,33 +1,56 @@
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { EconomyEngine } from "../../server/services/bi/EconomyEngine";
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { EconomyEngine } from '../../server/services/bi/EconomyEngine';
+// Mock Prisma to avoid DB dependency in unit tests
+vi.mock("../../server/lib/prisma", () => ({
+  prisma: {
+    order: { count: vi.fn().mockResolvedValue(0) },
+    user: { count: vi.fn().mockResolvedValue(0) },
+  },
+}));
 
-describe('EconomyEngine Unit Tests', () => {
-  let engine: any; // Use any to access private members for testing if needed
+// Mock Observability to avoid metrics registration issues
+vi.mock("../../server/services/infrastructure/Observability", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    metrics: {
+      register: {
+        registerMetric: vi.fn(),
+        getSingleMetric: vi.fn().mockReturnValue(undefined),
+      },
+    },
+    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+  };
+});
+
+// Mock EventMigration to avoid side effects
+vi.mock("../../server/services/infrastructure/EventMigration", () => ({
+  migrationManager: { publish: vi.fn().mockResolvedValue(undefined) },
+}));
+
+describe("EconomyEngine Unit Tests", () => {
+  let engine: any;
 
   beforeEach(() => {
-    // We create a fresh instance for testing rather than using the singleton
-    engine = new EconomyEngine();
-    // Stop the interval to prevent background interference
-    // Note: Since constructor starts interval, we might want to kill it or use fake timers
     vi.useFakeTimers();
+    engine = new EconomyEngine();
   });
 
-  it('should initialize with default state', () => {
+  it("should initialize with default state", () => {
     const snapshot = engine.getSnapshot();
-    expect(snapshot.activeDrivers).toBe(20);
+    // Initial state: activeDrivers uses fallback of 10 when DB returns 0 (see EconomyEngine.ts)
+    expect(snapshot.activeDrivers).toBe(10);
     expect(snapshot.surgeMultiplier).toBe(1.0);
   });
 
-  it('should calculate surge correctly based on ratio', () => {
-    // Access private calculateSurge via casting
+  it("should calculate surge correctly based on ratio", () => {
     const testCases = [
       { drivers: 20, orders: 5, expectedSurge: 1.0 },
-      { drivers: 10, orders: 9, expectedSurge: 1.2 }, // ratio 0.9
-      { drivers: 10, orders: 13, expectedSurge: 1.5 }, // ratio 1.3
-      { drivers: 5, orders: 11, expectedSurge: 2.0 },  // ratio 2.2
+      { drivers: 10, orders: 9, expectedSurge: 1.2 },
+      { drivers: 10, orders: 13, expectedSurge: 1.5 },
+      { drivers: 5, orders: 11, expectedSurge: 2.0 },
     ];
-
     testCases.forEach(({ drivers, orders, expectedSurge }) => {
       engine.state.activeDrivers = drivers;
       engine.state.pendingOrders = orders;
@@ -36,9 +59,9 @@ describe('EconomyEngine Unit Tests', () => {
     });
   });
 
-  it('should cap market heat at 1.0', () => {
+  it("should cap market heat at 1.0", () => {
     engine.state.activeDrivers = 1;
-    engine.state.pendingOrders = 100; // ratio 100
+    engine.state.pendingOrders = 100;
     engine.calculateSurge();
     expect(engine.state.marketHeat).toBe(1.0);
   });

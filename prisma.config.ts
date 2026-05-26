@@ -1,12 +1,7 @@
-import { PrismaClient } from "@prisma/client";
+import path from 'path';
+import { defineConfig } from 'prisma/config';
 
-/**
- * Prisma 7+ Configuration Layer
- * Centralized DB client configuration
- */
-
-export const prisma = new PrismaClient({
-  log: ["error", "warn"],
+export default defineConfig({
+  earlyAccess: true,
+  schema: path.join('prisma', 'schema.prisma'),
 });
-
-export default prisma;
