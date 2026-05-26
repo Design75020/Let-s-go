@@ -83,7 +83,7 @@ jobs:
     name: Production Deployment (Cloud Run)
     needs: gate
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && secrets.GCP_SA_KEY != ''
+    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 
