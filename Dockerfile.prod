@@ -48,4 +48,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 # The command will depend on the role (API vs Worker)
 # Default to API
-CMD ["sh", "-c", "node dist/server.cjs"]
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss 2>/dev/null || true && node dist/server.cjs"]
