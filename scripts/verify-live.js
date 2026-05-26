@@ -5,10 +5,10 @@
  * and robust PASS/DEGRADED/FAIL decision engine.
  */
 
-const axios = require('axios');
-const WebSocket = require('ws');
-const fs = require('fs');
-const path = require('path');
+import axios from 'axios';
+import WebSocket from 'ws';
+import fs from 'fs';
+import path from 'path';
 
 const TARGET_URL = process.env.TARGET_URL || 'http://localhost:3000';
 const WS_URL = TARGET_URL.replace('http', 'ws');

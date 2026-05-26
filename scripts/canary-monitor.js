@@ -3,7 +3,7 @@
  * Simulates a continuous overwatch gate for Cloud Run static canary traffic rollouts.
  */
 
-const axios = require("axios");
+import axios from 'axios';
 
 const TARGET_URL = process.env.TARGET_URL || "http://localhost:3000";
 const CANARY_URL = process.env.CANARY_URL || "http://localhost:3000";
