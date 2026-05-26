@@ -20,9 +20,6 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=8080
-# Security: Add a non-root user
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 letsgo
 
 # Install production dependencies only
 COPY package*.json ./
@@ -32,20 +29,15 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
 
-# Ensure Prisma client is generated
-RUN npx prisma generate
-
-# Final permissions
-RUN chown -R letsgo:nodejs /app
-
-USER letsgo
+# Ensure Prisma client is generated and entrypoint is executable
+RUN npx prisma generate && chmod +x docker-entrypoint.sh
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD node -e "fetch('http://localhost:' + (process.env.PORT || 8080) + '/api/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
 
-# The command will depend on the role (API vs Worker)
-# Default to API
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss 2>/dev/null || true && node dist/server.cjs"]
+# Use entrypoint to run migrations then start server
+ENTRYPOINT ["sh", "docker-entrypoint.sh"]
