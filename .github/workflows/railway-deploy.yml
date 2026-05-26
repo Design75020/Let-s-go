@@ -59,7 +59,7 @@ jobs:
         if: steps.railway-check.outputs.railway_available == 'true'
         run: |
           export PATH="$HOME/.railway/bin:$PATH"
-          railway up --detach
+          railway up --service letsgofood-api --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
@@ -67,6 +67,7 @@ jobs:
         run: |
           if [ "${{ steps.railway-check.outputs.railway_available }}" == "true" ]; then
             echo "✅ Deployed to Railway successfully"
+            echo "🌐 URL: https://letsgofood-api-production.up.railway.app"
           else
             echo "ℹ️ Build and tests passed. Add RAILWAY_TOKEN secret to enable auto-deployment."
           fi
