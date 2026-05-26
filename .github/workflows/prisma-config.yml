@@ -62,7 +62,11 @@ jobs:
       - name: Update Prisma imports
         if: steps.detect.outputs.legacy == 'true'
         run: |
-          find src -type f -name "*.ts" -exec sed -i 's/from "@prisma\/client"/from "..\/..\/prisma.config"/g' {} \;
+          for dir in server apps prisma source src; do
+            if [ -d "$dir" ]; then
+              find "$dir" -type f -name "*.ts" -exec sed -i 's/from "@prisma\/client"/from "..\/..\/prisma.config"/g' {} + || true
+            fi
+          done
 
       # ─────────────────────────────────────────────
       # 4. Format code

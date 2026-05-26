@@ -20,8 +20,8 @@ export class FinancialReconciler {
 
       for (const order of orders) {
         const totalCredited = order.ledgerEntries
-          .filter(e => e.status === 'COMPLETED')
-          .reduce((sum, e) => sum + e.amount, 0);
+          .filter((e: any) => e.status === 'COMPLETED')
+          .reduce((sum: number, e: any) => sum + e.amount, 0);
 
         if (Math.abs(totalCredited - order.total) > 0.001) {
           logger.fatal({ 

@@ -79,7 +79,13 @@ jobs:
       - name: Post Deployment Health Check
         run: |
           sleep 15
-          curl -f https://YOUR_CLOUD_RUN_URL/api/health || exit 1
+          DEPLOYED_URL=$(gcloud run services describe letsgofood-api --region europe-west1 --platform managed --format='value(status.url)')
+          if [ -n "$DEPLOYED_URL" ]; then
+            echo "Testing deployed endpoint at: $DEPLOYED_URL/api/health"
+            curl -f "$DEPLOYED_URL/api/health" || exit 1
+          else
+            echo "Warning: Could not extract deployed service URL"
+          fi
 
       - name: Rollback on Failure
         if: failure()

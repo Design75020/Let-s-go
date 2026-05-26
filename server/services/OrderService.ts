@@ -14,7 +14,7 @@ export class OrderService {
       throw new Error('System in Safe Mode: Order processing suspended');
     }
 
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx: any) => {
       // 1. Idempotency Check
       if (data.idempotencyKey) {
         const existing = await tx.order.findUnique({ where: { idempotencyKey: data.idempotencyKey } });
@@ -110,7 +110,7 @@ export class OrderService {
    * Eliminates race conditions via transactional "driverId IS NULL" check
    */
   public async claimOrder(orderId: string, driverId: string) {
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx: any) => {
       // Self-healing: Ensure driver user exists in SQLite SSoT
       await tx.user.upsert({
         where: { id: driverId },
