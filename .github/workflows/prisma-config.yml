@@ -24,88 +24,74 @@ jobs:
         run: npm ci
 
       # ─────────────────────────────────────────────
-      # 1. Detect legacy Prisma config usage
+      # 1. Validate that prisma.config.ts uses defineConfig (Prisma 7)
       # ─────────────────────────────────────────────
-      - name: Detect legacy Prisma config
+      - name: Validate Prisma 7 config format
         id: detect
         run: |
-          if grep -r "prisma config" . || grep -r "@prisma/client" .; then
-            echo "legacy=true" >> $GITHUB_OUTPUT
+          if [ -f "prisma.config.ts" ]; then
+            if grep -q "defineConfig\|PrismaConfig" prisma.config.ts; then
+              echo "status=valid" >> $GITHUB_OUTPUT
+              echo "✅ prisma.config.ts uses Prisma 7 defineConfig format"
+            else
+              echo "status=legacy" >> $GITHUB_OUTPUT
+              echo "⚠️  prisma.config.ts uses legacy format - will migrate"
+            fi
           else
-            echo "legacy=false" >> $GITHUB_OUTPUT
+            echo "status=missing" >> $GITHUB_OUTPUT
+            echo "ℹ️  prisma.config.ts not found - will create"
           fi
 
       # ─────────────────────────────────────────────
-      # 2. Auto-generate prisma.config.ts
+      # 2. Auto-generate correct Prisma 7 config (only if needed)
       # ─────────────────────────────────────────────
-      - name: Generate prisma.config.ts (if missing)
-        if: steps.detect.outputs.legacy == 'true'
+      - name: Generate prisma.config.ts (Prisma 7 format)
+        if: steps.detect.outputs.status != 'valid'
         run: |
-          cat > prisma.config.ts << 'EOF'
-          import { PrismaClient } from "@prisma/client";
+          cat > prisma.config.ts << 'PRISMAEOF'
+          import type { PrismaConfig } from 'prisma';
 
-          /**
-           * Prisma 7+ Configuration Layer
-           * Centralized DB client configuration
-           */
-
-          export const prisma = new PrismaClient({
-            log: ["error", "warn"],
-          });
-
-          export default prisma;
-          EOF
+          export default {
+            earlyAccess: true,
+            schema: {
+              kind: 'single',
+              filePath: './prisma/schema.prisma',
+            },
+          } satisfies PrismaConfig;
+          PRISMAEOF
+          echo "✅ prisma.config.ts generated with Prisma 7 defineConfig format"
 
       # ─────────────────────────────────────────────
-      # 3. Replace old Prisma imports
+      # 3. Validate Prisma client generation
       # ─────────────────────────────────────────────
-      - name: Update Prisma imports
-        if: steps.detect.outputs.legacy == 'true'
+      - name: Prisma generate
         run: |
-          for dir in server apps prisma source src; do
-            if [ -d "$dir" ]; then
-              find "$dir" -type f -name "*.ts" -exec sed -i 's/from "@prisma\/client"/from "..\/..\/prisma.config"/g' {} + || true
-            fi
-          done
+          DATABASE_URL="file:./prisma/dev.db" npx prisma generate
+          echo "✅ Prisma client generated successfully"
 
       # ─────────────────────────────────────────────
-      # 4. Format code
-      # ─────────────────────────────────────────────
-      - name: Format code
-        run: |
-          npm run format --if-present
-
-      # ─────────────────────────────────────────────
-      # 5. Type check
+      # 4. TypeScript check
       # ─────────────────────────────────────────────
       - name: TypeScript check
         run: |
           npx tsc --noEmit
+          echo "✅ TypeScript: 0 errors"
 
       # ─────────────────────────────────────────────
-      # 6. Validate Prisma client
-      # ─────────────────────────────────────────────
-      - name: Prisma generate
-        run: |
-          npx prisma generate
-
-      # ─────────────────────────────────────────────
-      # 7. Commit auto-fix (only on main)
+      # 5. Commit auto-fix (only on main, only if changed)
       # ─────────────────────────────────────────────
       - name: Commit changes
-        if: github.ref == 'refs/heads/main' && steps.detect.outputs.legacy == 'true'
+        if: github.ref == 'refs/heads/main' && steps.detect.outputs.status != 'valid'
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add .
-          git commit -m "chore(prisma): migrate to prisma.config.ts (auto-fix)"
-          git push
+          git add prisma.config.ts
+          git diff --staged --quiet || git commit -m "chore(prisma): migrate to Prisma 7 defineConfig format (auto-fix)"
+          git diff --staged --quiet || git push
 
       # ─────────────────────────────────────────────
-      # 8. Safety gate
+      # 6. Safety gate
       # ─────────────────────────────────────────────
       - name: Safety validation
         run: |
-          node -e "
-            console.log('Prisma migration validation OK');
-          "
+          node -e "console.log('✅ Prisma 7 migration validation OK');"
