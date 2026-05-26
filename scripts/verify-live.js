@@ -329,7 +329,7 @@ async function runGate() {
     latencies.push(dur);
     
     const isHtml = res.headers['content-type']?.includes('text/html');
-    const hasBody = res.data && String(res.data).includes('<!DOCTYPE html>');
+    const hasBody = res.data && String(res.data).toLowerCase().includes('<!doctype html>');
     
     if (res.status === 200 && isHtml && hasBody) {
       recordCheck('Frontend Serving (/)', 'PASS', `${dur}ms - HTML Served`, 'FATAL', 15);

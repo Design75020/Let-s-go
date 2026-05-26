@@ -59,19 +59,20 @@ jobs:
 
       - name: Start Background SRE Test Instance
         run: |
-          PORT=3000 npm run dev &
-          echo "SRE local target listening on port 3000"
-          for i in $(seq 1 15); do
-            curl -sf http://localhost:3000/health && break || sleep 2
+          PORT=8080 npm run start &
+          echo "SRE local target listening on port 8080"
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:8080/api/health && break || sleep 3
           done
         env:
           DATABASE_URL: "file:./prisma/dev.db"
+          PORT: "8080"
 
       # Run against the local background server OR Staging URL if provided
       - name: Run SRE Gate Simulation
         run: node scripts/verify-live.js
         env:
-          TARGET_URL: ${{ secrets.STAGING_URL || 'http://localhost:3000' }}
+          TARGET_URL: ${{ secrets.STAGING_URL || 'http://localhost:8080' }}
           DATABASE_URL: "file:./prisma/dev.db"
           SRE_MODE: mvp
 
