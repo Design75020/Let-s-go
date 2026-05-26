@@ -52,26 +52,11 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
-      - name: Initialize Database for SRE Test
-        run: |
-          DATABASE_URL="file:./prisma/ci-sre.db" npx prisma db push --skip-generate --accept-data-loss
-        env:
-          DATABASE_URL: "file:./prisma/ci-sre.db"
-
       - name: Start Background SRE Test Instance
         run: |
-          PORT=3000 DATABASE_URL="file:./prisma/ci-sre.db" JWT_SECRET="ci-sre-secret" npm run dev &
-          echo "Waiting for SRE test instance on port 3000..."
-          for i in $(seq 1 20); do
-            if curl -sf http://localhost:3000/api/health > /dev/null 2>&1; then
-              echo "✅ Server ready after ${i}s"
-              break
-            fi
-            sleep 2
-          done
-        env:
-          DATABASE_URL: "file:./prisma/ci-sre.db"
-          JWT_SECRET: "ci-sre-secret-key"
+          PORT=3000 npm run dev &
+          echo "SRE local target listening on port 3000"
+          sleep 5
 
       # Run against the local background server OR Staging URL if provided
       - name: Run SRE Gate Simulation

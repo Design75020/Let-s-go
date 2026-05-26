@@ -8,10 +8,8 @@ export default defineConfig(({mode}) => {
   return {
     plugins: [react(), tailwindcss()],
     define: {
-      // SECURITY: Only expose VITE_-prefixed env vars to the client bundle.
-      // Server-side keys (GEMINI_API_KEY) must NOT be embedded in the frontend bundle.
-      // Use VITE_GOOGLE_MAPS_KEY for the maps key (already in .env.example).
-      'process.env.VITE_GOOGLE_MAPS_KEY': JSON.stringify(env.VITE_GOOGLE_MAPS_KEY || ''),
+      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || process.env.GEMINI_API_KEY),
+      'process.env.GOOGLE_MAPS_PLATFORM_KEY': JSON.stringify(env.GOOGLE_MAPS_PLATFORM_KEY || process.env.GOOGLE_MAPS_PLATFORM_KEY),
     },
     resolve: {
       alias: {

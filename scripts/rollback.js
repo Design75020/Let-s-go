@@ -3,7 +3,7 @@
  * Triggers automated rollbacks to preceding stable database revisions.
  */
 
-import axios from 'axios';
+const axios = require("axios");
 
 const TARGET_URL = process.env.TARGET_URL || "http://localhost:3000";
 

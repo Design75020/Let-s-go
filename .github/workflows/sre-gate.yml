@@ -31,32 +31,14 @@ jobs:
       - name: Run unit tests
         run: npm test --if-present
 
-      - name: Initialize Database
-        run: |
-          npx prisma generate
-          DATABASE_URL="file:./prisma/ci-test.db" npx prisma db push --skip-generate --accept-data-loss
-        env:
-          DATABASE_URL: "file:./prisma/ci-test.db"
-
       - name: Start application (background)
         run: |
-          PORT=8080 DATABASE_URL="file:./prisma/ci-test.db" JWT_SECRET="ci-test-secret" npm run start &
-          echo "Waiting for server..."
-          for i in $(seq 1 20); do
-            if curl -sf http://localhost:8080/api/health > /dev/null 2>&1; then
-              echo "Server ready after ${i}s"
-              break
-            fi
-            sleep 2
-          done
-        env:
-          DATABASE_URL: "file:./prisma/ci-test.db"
-          JWT_SECRET: "ci-test-secret-key"
-          NODE_ENV: "production"
+          npm run start &
+          sleep 10
 
       - name: SRE Health Check - API
         run: |
-          curl -f http://localhost:8080/api/health || exit 1
+          curl -f http://localhost:3000/api/health || exit 1
 
       - name: SRE Health Check - PostgreSQL
         run: |

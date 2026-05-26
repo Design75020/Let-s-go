@@ -1,6 +1,5 @@
 
 import { EventEmitter } from 'events';
-import { logger } from '../infrastructure/Observability';
 
 class GlobalEventBus extends EventEmitter {
   private static instance: GlobalEventBus;
@@ -18,7 +17,7 @@ class GlobalEventBus extends EventEmitter {
   }
 
   emit(event: string | symbol, ...args: any[]): boolean {
-    logger.info(`[EVENT] ${String(event)}`, args[0]?.type || '');
+    console.log(`[EVENT] ${String(event)}`, args[0]?.type || '');
     return super.emit(event, ...args);
   }
 }

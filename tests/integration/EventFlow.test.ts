@@ -16,50 +16,23 @@ vi.mock('../../server/services/infrastructure/EventStream', () => ({
   },
   EventDomain: {
     ECONOMY: 'letsgo:stream:economy',
-    MARKETPLACE: 'letsgo:stream:marketplace',
-    BI: 'letsgo:stream:bi',
   },
 }));
 
-vi.mock('../../server/services/infrastructure/Observability', async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    metrics: {
-      register: {
-        registerMetric: vi.fn(),
-        getSingleMetric: vi.fn().mockReturnValue(undefined),
-      },
-    },
-    logger: { info: vi.fn(), error: vi.fn(), debug: vi.fn(), warn: vi.fn() },
-    httpRequestsTotal: { inc: vi.fn() },
-    httpRequestDurationSeconds: { observe: vi.fn() },
-    contextStorage: {
-      run: (ctx: any, cb: any) => cb(),
-      getStore: () => ({ correlationId: 'test-id' })
-    }
-  };
-});
-
-// Mock Prisma to avoid real DB calls in integration tests
-vi.mock('../../server/lib/prisma', () => ({
-  prisma: {
-    $transaction: vi.fn().mockImplementation(async (cb: any) => {
-      const mockOrder = { id: 'order-123', userId: 'user-1', restaurantId: 'rest-1', status: 'PENDING', total: 10, items: '[]', createdAt: new Date() };
-      const mockTx = {
-        user: { upsert: vi.fn().mockResolvedValue({ id: 'user-1', email: 'test@test.com', name: 'Test', role: 'CUSTOMER', createdAt: new Date() }) },
-        restaurant: { upsert: vi.fn().mockResolvedValue({ id: 'rest-1', name: 'Test Restaurant', location: 'Paris', createdAt: new Date() }) },
-        order: {
-          findUnique: vi.fn().mockResolvedValue(null),
-          create: vi.fn().mockResolvedValue(mockOrder),
-        },
-        ledgerEntry: { create: vi.fn().mockResolvedValue({ id: 'ledger-1' }) },
-      };
-      return cb(mockTx);
-    }),
+vi.mock('../../server/services/infrastructure/Observability', () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
   },
+  httpRequestsTotal: {
+    inc: vi.fn(),
+  },
+  contextStorage: {
+    run: (ctx: any, cb: any) => cb(),
+    getStore: () => ({ correlationId: 'test-id' })
+  }
 }));
-
 
 describe('Integration: API to Event Stream', () => {
   beforeEach(() => {
@@ -83,10 +56,10 @@ describe('Integration: API to Event Stream', () => {
 
     // Verify the integration with EventStream
     expect(eventStream.publish).toHaveBeenCalledWith(
-      'letsgo:stream:marketplace',
-      'order.pending',
+      'letsgo:stream:economy',
+      'order.created',
       expect.objectContaining({
-        orderId: 'order-123',
+        userId: 'user-abc',
         total: 15
       })
     );

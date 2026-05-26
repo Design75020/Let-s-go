@@ -5,10 +5,10 @@
  * and robust PASS/DEGRADED/FAIL decision engine.
  */
 
-import axios from 'axios';
-import WebSocket from 'ws';
-import fs from 'fs';
-import path from 'path';
+const axios = require('axios');
+const WebSocket = require('ws');
+const fs = require('fs');
+const path = require('path');
 
 const TARGET_URL = process.env.TARGET_URL || 'http://localhost:3000';
 const WS_URL = TARGET_URL.replace('http', 'ws');
@@ -331,11 +331,8 @@ async function runGate() {
     const isHtml = res.headers['content-type']?.includes('text/html');
     const hasBody = res.data && String(res.data).includes('<!DOCTYPE html>');
     
-    if (res.status === 200 && (isHtml || hasBody)) {
+    if (res.status === 200 && isHtml && hasBody) {
       recordCheck('Frontend Serving (/)', 'PASS', `${dur}ms - HTML Served`, 'FATAL', 15);
-    } else if (res.status === 200) {
-      // In CI/build mode, server may not serve SPA HTML on /; treat as DEGRADED (non-fatal)
-      recordCheck('Frontend Serving (/)', 'DEGRADED', `${dur}ms - Status 200 (non-HTML content-type: ${res.headers['content-type']})`, 'WARNING', 15);
     } else {
       recordCheck('Frontend Serving (/)', 'FAIL', `Not serving HTML cleanly (Code: ${res.status})`, 'FATAL', 15);
     }

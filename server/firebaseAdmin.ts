@@ -1,6 +1,5 @@
 
 import admin from 'firebase-admin';
-import { logger } from '../server/services/infrastructure/Observability';
 import { getFirestore } from 'firebase-admin/firestore';
 import path from 'path';
 import fs from 'fs';
@@ -26,7 +25,7 @@ try {
     app = admin.initializeApp({
       projectId: projectId
     });
-    logger.info({ projectId }, 'Firebase Admin initialized');
+    console.log('Firebase Admin initialized with projectId:', projectId);
   } else {
     app = admin.app();
   }

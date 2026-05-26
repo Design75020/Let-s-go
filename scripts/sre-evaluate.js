@@ -3,7 +3,7 @@
  * Compiles a definitive decision metric block for autonomous cloud deployment triggers.
  */
 
-import axios from 'axios';
+const axios = require("axios");
 
 const TARGET_URL = process.env.TARGET_URL || "http://localhost:3000";
 
