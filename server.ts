@@ -1,4 +1,32 @@
 
+
+/**
+ * ============================================================================
+ * LETSGOFOOD V15 — HIGH-PERFORMANCE PRODUCTION ENGINE (server.ts)
+ * ============================================================================
+ * 
+ * 🛠️ 1. ENV VARIABLES MANAGEMENT:
+ *    - process.env.PORT       : Dynamic port assigned by Cloud Run ingress. Defer to 8080.
+ *    - process.env.NODE_ENV   : 'production' | 'development' | 'test'. Drives Vite static SPA vs. HMR node.
+ *    - process.env.SAFE_MODE  : Active backup circuit switcher. When active, suspends all mutable order loops.
+ *    - process.env.LOG_LEVEL  : Managed by pino/logger levels ('error', 'warn', 'info', 'debug').
+ * 
+ * 🗄️ 2. CANONICAL DATABASE SSoT / ORM ENGINE:
+ *    - Uses PRISMA ORM over PostgreSQL (Cloud SQL) in Production, falling back to SQLite in local sandbox.
+ *    - Note on MongoDB: LetsGoFood has discarded document databases to maintain strict transactional consistency
+ *    - and financial ledger idempotency (SSoT). All schema structures are strictly validated via migrations.
+ * 
+ * 🔒 3. JWT AUTHENTICATION & SECURE ACCESS:
+ *    - Secured via standard Express headers, helmet, and custom Cors middleware.
+ *    - Handled via '/server/middleware/AuthMiddleware.ts' (`authenticate`, `authorize`) to guard secure
+ *    - administrator, driver, and merchant scopes using robust JWT token decryption & validation.
+ * 
+ * 💳 4. STRIPE & REALTIME DISPATCH BUSINESS LOGIC:
+ *    - Order claim concurrency is handled with strict transaction-isolated locks to prevent double-claiming.
+ *    - WebSockets use Socket.io (`setupSocket`) with resilient cross-process sync.
+ *    - External payment receipts (Stripe Webhooks) use idempotency guarantees wrapped into DB operations.
+ */
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
