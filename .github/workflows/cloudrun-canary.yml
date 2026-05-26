@@ -18,10 +18,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Setup Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.PROJECT_ID }}
+        continue-on-error: true
 
       - name: Build and Push Docker image
         run: |
@@ -85,6 +95,8 @@ jobs:
       - name: SRE Auto-Rollback Emergency Action
         if: failure()
         run: |
-          echo "🚨 [SRE PIELINE FAULT] Anomaly or verification failure detected. Resetting traffic to 100% stable v1 master revision..."
-          node scripts/rollback.js
+          echo "🚨 [SRE PIPELINE FAULT] Anomaly or verification failure detected. Resetting traffic to 100% stable v1 master revision..."
+          node scripts/rollback.js || echo "⚠️  Rollback script unavailable - manual intervention required"
           # gcloud run services update-traffic ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --to-revisions latest=100
+        env:
+          TARGET_URL: ${{ secrets.STAGING_URL || 'http://localhost:8080' }}

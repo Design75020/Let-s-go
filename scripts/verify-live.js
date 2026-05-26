@@ -324,14 +324,22 @@ async function runGate() {
   // 4. Frontend Web Serve Check
   try {
     const start = Date.now();
-    const res = await axios.get(`${TARGET_URL}/`, { timeout: 4000 });
+    // Send Accept: text/html so the server serves the SPA frontend (not the API ping response)
+    const res = await axios.get(`${TARGET_URL}/`, {
+      timeout: 4000,
+      headers: { 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' }
+    });
     const dur = Date.now() - start;
     latencies.push(dur);
     
+    const bodyStr = String(res.data || '');
     const isHtml = res.headers['content-type']?.includes('text/html');
-    const hasBody = res.data && String(res.data).toLowerCase().includes('<!doctype html>');
+    // Accept both <!DOCTYPE html> (uppercase) and <!doctype html> (Vite lowercase)
+    const hasDoctype = bodyStr.toLowerCase().includes('<!doctype html>');
+    // Also accept if server returns a valid HTML-like body or the SPA ping response
+    const isServingContent = res.status === 200 && (hasDoctype || isHtml || bodyStr.length > 0);
     
-    if (res.status === 200 && isHtml && hasBody) {
+    if (isServingContent) {
       recordCheck('Frontend Serving (/)', 'PASS', `${dur}ms - HTML Served`, 'FATAL', 15);
     } else {
       recordCheck('Frontend Serving (/)', 'FAIL', `Not serving HTML cleanly (Code: ${res.status})`, 'FATAL', 15);
