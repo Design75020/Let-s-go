@@ -1,0 +1,72 @@
+name: Deploy to Railway
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy LetsGoFood V15 to Railway
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Run tests
+        run: npm run test
+        env:
+          DATABASE_URL: file:./prisma/test.db
+          JWT_SECRET: test_secret_for_ci
+          NODE_ENV: test
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Check Railway token
+        id: railway-check
+        run: |
+          if [ -n "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "railway_available=true" >> $GITHUB_OUTPUT
+          else
+            echo "railway_available=false" >> $GITHUB_OUTPUT
+            echo "⚠️ RAILWAY_TOKEN not set - skipping deployment"
+          fi
+
+      - name: Install Railway CLI
+        if: steps.railway-check.outputs.railway_available == 'true'
+        run: curl -fsSL https://railway.app/install.sh | sh
+        shell: bash
+
+      - name: Deploy to Railway
+        if: steps.railway-check.outputs.railway_available == 'true'
+        run: |
+          export PATH="$HOME/.railway/bin:$PATH"
+          railway up --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Deployment summary
+        run: |
+          if [ "${{ steps.railway-check.outputs.railway_available }}" == "true" ]; then
+            echo "✅ Deployed to Railway successfully"
+          else
+            echo "ℹ️ Build and tests passed. Add RAILWAY_TOKEN secret to enable auto-deployment."
+          fi
